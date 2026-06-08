@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router";
 import api from "~/services/api";
+import MailboxAvatar from "~/components/MailboxAvatar";
 import {
 	useCreateMailbox,
 	useDeleteMailbox,
@@ -178,9 +179,13 @@ export default function HomeRoute() {
 									idx > 0 ? "border-t border-kumo-line" : ""
 								}`}
 							>
-								<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-kumo-fill text-sm font-bold text-kumo-default">
-									{account.name.charAt(0).toUpperCase()}
-								</div>
+								<MailboxAvatar
+									email={account.email}
+									name={account.settings?.fromName || account.name}
+									size="md"
+									variant="muted"
+									avatarVersion={account.settings?.avatarUpdatedAt}
+								/>
 								<div className="min-w-0 flex-1">
 									<div className="text-sm font-medium text-kumo-default truncate">
 										{account.name}

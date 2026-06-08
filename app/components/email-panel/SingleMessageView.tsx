@@ -4,28 +4,42 @@
 
 import EmailAttachmentList from "~/components/EmailAttachmentList";
 import EmailIframe from "~/components/EmailIframe";
+import MailboxAvatar from "~/components/MailboxAvatar";
+import { getAvatarVersion } from "~/hooks/useAvatarVersions";
 import { formatDetailDate, rewriteInlineImages } from "~/lib/utils";
 import type { Email } from "~/types";
 
 interface SingleMessageViewProps {
 	email: Email;
 	mailboxId?: string;
+	mailboxEmail?: string;
 	onPreviewImage: (url: string, filename: string) => void;
+	avatarVersions?: Map<string, string>;
 }
 
 export default function SingleMessageView({
 	email,
 	mailboxId,
+	mailboxEmail,
 	onPreviewImage,
+	avatarVersions,
 }: SingleMessageViewProps) {
+	const senderEmail = email.sender.trim().toLowerCase();
+	const isSelf = senderEmail === mailboxEmail?.trim().toLowerCase();
+	const avatarVersion = getAvatarVersion(avatarVersions ?? new Map(), senderEmail);
+
 	return (
 		<div className="flex flex-col h-full">
 			<div className="px-4 py-4 border-b border-kumo-line md:px-6">
 				<div className="flex items-center justify-between gap-3">
 					<div className="flex items-center gap-2.5 min-w-0">
-						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kumo-fill text-xs font-bold text-kumo-default">
-							{email.sender.charAt(0).toUpperCase()}
-						</div>
+						<MailboxAvatar
+							email={senderEmail}
+							name={email.sender}
+							size="md"
+							variant={isSelf ? "brand" : "muted"}
+							avatarVersion={avatarVersion}
+						/>
 						<div className="min-w-0">
 							<div className="text-sm font-medium text-kumo-default truncate">
 								{email.sender}

@@ -13,6 +13,8 @@ import {
 } from "@phosphor-icons/react";
 import EmailAttachmentList from "~/components/EmailAttachmentList";
 import EmailIframe from "~/components/EmailIframe";
+import MailboxAvatar from "~/components/MailboxAvatar";
+import { getAvatarVersion } from "~/hooks/useAvatarVersions";
 import {
 	formatDetailDate,
 	formatShortDate,
@@ -35,22 +37,7 @@ interface ThreadMessageProps {
 	onDeleteDraft?: () => void;
 	onViewSource?: () => void;
 	onPreviewImage?: (url: string, filename: string) => void;
-}
-
-function Avatar({ isDraft, isSelf, sender }: { isDraft?: boolean; isSelf: boolean; sender: string }) {
-	return (
-		<div
-			className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-				isDraft
-					? "bg-kumo-fill text-kumo-subtle"
-					: isSelf
-						? "bg-kumo-brand text-kumo-inverse"
-						: "bg-kumo-fill text-kumo-default"
-			}`}
-		>
-			{isDraft ? "D" : sender.charAt(0).toUpperCase()}
-		</div>
-	);
+	avatarVersions?: Map<string, string>;
 }
 
 export default function ThreadMessage({
@@ -67,8 +54,11 @@ export default function ThreadMessage({
 	onDeleteDraft,
 	onViewSource,
 	onPreviewImage,
+	avatarVersions,
 }: ThreadMessageProps) {
-	const isSelf = email.sender === mailboxEmail;
+	const senderEmail = email.sender.trim().toLowerCase();
+	const isSelf = senderEmail === mailboxEmail?.trim().toLowerCase();
+	const avatarVersion = getAvatarVersion(avatarVersions ?? new Map(), senderEmail);
 	const containerClassName = `${!isLast ? "border-b border-kumo-line" : ""} ${isDraft ? "border-l-2 border-l-kumo-warning bg-kumo-warning/[0.02]" : ""}`;
 	const senderLabel = isDraft ? "Draft reply" : isSelf ? "You" : email.sender;
 
@@ -80,7 +70,13 @@ export default function ThreadMessage({
 					onClick={onToggleExpand}
 					className="w-full flex items-center gap-3 px-4 py-3 hover:bg-kumo-tint rounded-lg text-left"
 				>
-					<Avatar isDraft={isDraft} isSelf={isSelf} sender={email.sender} />
+					<MailboxAvatar
+						email={senderEmail}
+						name={isSelf ? "You" : email.sender}
+						size="sm"
+						variant={isDraft ? "draft" : isSelf ? "brand" : "muted"}
+						avatarVersion={avatarVersion}
+					/>
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center justify-between">
 							<span className="text-sm font-medium text-kumo-default truncate">
@@ -112,7 +108,13 @@ export default function ThreadMessage({
 							aria-label="Collapse message"
 						>
 							<div className="cursor-pointer hover:ring-2 hover:ring-kumo-brand/30 transition-shadow rounded-full">
-								<Avatar isDraft={isDraft} isSelf={isSelf} sender={email.sender} />
+								<MailboxAvatar
+						email={senderEmail}
+						name={isSelf ? "You" : email.sender}
+						size="sm"
+						variant={isDraft ? "draft" : isSelf ? "brand" : "muted"}
+						avatarVersion={avatarVersion}
+					/>
 							</div>
 						</button>
 						<div className="min-w-0">

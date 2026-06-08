@@ -1,33 +1,54 @@
-// Copyright (c) 2026 Cloudflare, Inc.
-// Licensed under the Apache 2.0 license found in the LICENSE file or at:
-//     https://opensource.org/licenses/Apache-2.0
-
-import { Badge, Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
-import { RobotIcon, ArrowCounterClockwiseIcon } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
+import { CameraIcon, FloppyDiskIcon, LinkIcon, MapPinIcon } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { useMailbox, useUpdateMailbox } from "~/queries/mailboxes";
+import MailboxAvatar from "~/components/MailboxAvatar";
+import MailboxCover from "~/components/MailboxCover";
+import {
+	useMailbox,
+	useUpdateMailbox,
+	useUploadMailboxAvatar,
+	useUploadMailboxCover,
+} from "~/queries/mailboxes";
 
-// Placeholder shown in the textarea when no custom prompt is set.
-// The authoritative default prompt lives in workers/agent/index.ts (DEFAULT_SYSTEM_PROMPT).
-const PROMPT_PLACEHOLDER = `You are an email assistant that helps manage this inbox. You read emails, draft replies, and help organize conversations.\n\nWrite like a real person. Short, direct, flowing prose. Plain text only.\n\n(Leave empty to use the full built-in default prompt)`;
-const SHOW_AGENT_SETTINGS = false;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+function validateImage(file: File, maxMb: number) {
+	if (!IMAGE_TYPES.includes(file.type as (typeof IMAGE_TYPES)[number])) {
+		return "Use JPEG, PNG, or WebP";
+	}
+	if (file.size > maxMb * 1024 * 1024) {
+		return `Image must be ${maxMb}MB or smaller`;
+	}
+	return null;
+}
 
 export default function SettingsRoute() {
 	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const toastManager = useKumoToastManager();
 	const { data: mailbox } = useMailbox(mailboxId);
-	const updateMailboxMutation = useUpdateMailbox();
+	const updateMailbox = useUpdateMailbox();
+	const uploadAvatar = useUploadMailboxAvatar();
+	const uploadCover = useUploadMailboxCover();
+	const avatarInputRef = useRef<HTMLInputElement>(null);
+	const coverInputRef = useRef<HTMLInputElement>(null);
 
 	const [displayName, setDisplayName] = useState("");
-	const [agentPrompt, setAgentPrompt] = useState("");
+	const [bio, setBio] = useState("");
+	const [location, setLocation] = useState("");
+	const [website, setWebsite] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
+	const [avatarVersion, setAvatarVersion] = useState<string | null>(null);
+	const [coverVersion, setCoverVersion] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (mailbox) {
-			setDisplayName(mailbox.settings?.fromName || mailbox.name || "");
-			setAgentPrompt(mailbox.settings?.agentSystemPrompt || "");
-		}
+		if (!mailbox) return;
+		setDisplayName(mailbox.settings?.fromName || mailbox.name || "");
+		setBio(mailbox.settings?.bio || "");
+		setLocation(mailbox.settings?.location || "");
+		setWebsite(mailbox.settings?.website || "");
+		setAvatarVersion(mailbox.settings?.avatarUpdatedAt ?? null);
+		setCoverVersion(mailbox.settings?.coverUpdatedAt ?? null);
 	}, [mailbox]);
 
 	const handleSave = async () => {
@@ -35,24 +56,50 @@ export default function SettingsRoute() {
 		setIsSaving(true);
 		const settings = {
 			...mailbox.settings,
-			fromName: displayName,
-			agentSystemPrompt: agentPrompt.trim() || undefined,
+			fromName: displayName.trim() || mailbox.name,
+			bio: bio.trim() || undefined,
+			location: location.trim() || undefined,
+			website: website.trim() || undefined,
 		};
 		try {
-			await updateMailboxMutation.mutateAsync({ mailboxId, settings });
-			toastManager.add({ title: "Settings saved!" });
+			await updateMailbox.mutateAsync({ mailboxId, settings });
+			toastManager.add({ title: "Profile saved" });
 		} catch {
-			toastManager.add({
-				title: "Failed to save settings",
-				variant: "error",
-			});
+			toastManager.add({ title: "Failed to save profile", variant: "error" });
 		} finally {
 			setIsSaving(false);
 		}
 	};
 
-	const handleResetPrompt = () => {
-		setAgentPrompt("");
+	const handleImagePick = async (
+		file: File | undefined,
+		kind: "avatar" | "cover",
+	) => {
+		if (!mailboxId || !file) return;
+		const maxMb = kind === "avatar" ? 2 : 4;
+		const validationError = validateImage(file, maxMb);
+		if (validationError) {
+			toastManager.add({ title: validationError, variant: "error" });
+			return;
+		}
+		try {
+			if (kind === "avatar") {
+				const result = await uploadAvatar.mutateAsync({ mailboxId, file });
+				setAvatarVersion(result.avatarUpdatedAt);
+				toastManager.add({ title: "Profile photo updated" });
+			} else {
+				const result = await uploadCover.mutateAsync({ mailboxId, file });
+				setCoverVersion(result.coverUpdatedAt);
+				toastManager.add({ title: "Cover photo updated" });
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to upload photo";
+			toastManager.add({ title: message, variant: "error" });
+		} finally {
+			const inputRef = kind === "avatar" ? avatarInputRef : coverInputRef;
+			if (inputRef.current) inputRef.current.value = "";
+		}
 	};
 
 	if (!mailbox) {
@@ -63,75 +110,140 @@ export default function SettingsRoute() {
 		);
 	}
 
-	const isCustomPrompt = agentPrompt.trim().length > 0;
-
 	return (
-		<div className="max-w-2xl px-4 py-4 md:px-8 md:py-6 h-full overflow-y-auto">
-			<h1 className="text-lg font-semibold text-kumo-default mb-6">Settings</h1>
+		<div className="h-full overflow-y-auto bg-kumo-recessed">
+			<div className="mx-auto max-w-2xl">
+				<button
+					type="button"
+					onClick={() => coverInputRef.current?.click()}
+					disabled={uploadCover.isPending}
+					className="group relative block h-36 w-full md:h-44"
+					aria-label="Change cover photo"
+				>
+					<MailboxCover
+						email={mailbox.email}
+						coverVersion={coverVersion}
+						className="h-full w-full"
+					/>
+					<span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100">
+						<span className="inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-sm font-medium text-white">
+							<CameraIcon size={18} />
+							{uploadCover.isPending ? "Uploading..." : "Change cover"}
+						</span>
+					</span>
+				</button>
+				<input
+					ref={coverInputRef}
+					type="file"
+					accept="image/jpeg,image/png,image/webp"
+					className="hidden"
+					onChange={(e) => void handleImagePick(e.target.files?.[0], "cover")}
+				/>
 
-			<div className="space-y-6">
-				{/* Account */}
-				<div className="rounded-lg border border-kumo-line bg-kumo-base p-5">
-					<div className="text-sm font-medium text-kumo-default mb-4">
-						Account
+				<div className="relative px-4 pb-6 md:px-8">
+					<div className="-mt-14 mb-4 flex items-end justify-between gap-3">
+						<button
+							type="button"
+							onClick={() => avatarInputRef.current?.click()}
+							disabled={uploadAvatar.isPending}
+							className="group relative shrink-0 rounded-full border-4 border-kumo-base shadow-md focus:outline-none focus:ring-2 focus:ring-kumo-ring disabled:opacity-70"
+							aria-label="Change profile photo"
+						>
+							<MailboxAvatar
+								email={mailbox.email}
+								name={displayName}
+								size="xl"
+								variant="brand"
+								avatarVersion={avatarVersion}
+								className="border-0"
+							/>
+							<span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+								<CameraIcon size={28} className="text-white" />
+							</span>
+						</button>
+						<input
+							ref={avatarInputRef}
+							type="file"
+							accept="image/jpeg,image/png,image/webp"
+							className="hidden"
+							onChange={(e) => void handleImagePick(e.target.files?.[0], "avatar")}
+						/>
+						<Button
+							variant="primary"
+							size="sm"
+							icon={<FloppyDiskIcon size={16} />}
+							onClick={handleSave}
+							loading={isSaving}
+						>
+							Save profile
+						</Button>
 					</div>
-					<div className="space-y-3">
+
+					<div className="space-y-1">
+						<h1 className="text-2xl font-bold text-kumo-default">
+							{displayName || mailbox.email.split("@")[0]}
+						</h1>
+						<p className="text-sm text-kumo-subtle">{mailbox.email}</p>
+					</div>
+
+					{bio && (
+						<p className="mt-4 text-sm leading-relaxed text-kumo-default">{bio}</p>
+					)}
+
+					<div className="mt-3 flex flex-wrap gap-3 text-sm text-kumo-subtle">
+						{location && (
+							<span className="inline-flex items-center gap-1.5">
+								<MapPinIcon size={16} />
+								{location}
+							</span>
+						)}
+						{website && (
+							<a
+								href={website.startsWith("http") ? website : `https://${website}`}
+								target="_blank"
+								rel="noreferrer"
+								className="inline-flex items-center gap-1.5 text-kumo-brand hover:underline"
+							>
+								<LinkIcon size={16} />
+								{website.replace(/^https?:\/\//, "")}
+							</a>
+						)}
+					</div>
+
+					<div className="mt-8 space-y-5 rounded-xl border border-kumo-line bg-kumo-base p-5">
+						<h2 className="text-sm font-semibold text-kumo-default">Edit profile</h2>
+						<p className="text-xs text-kumo-subtle">
+							Click cover or avatar to upload. Photos sync across inbox and threads.
+						</p>
 						<Input
-							label="Display Name"
+							label="Display name"
 							value={displayName}
 							onChange={(e) => setDisplayName(e.target.value)}
+							placeholder="How you appear when sending mail"
+						/>
+						<label className="block space-y-1.5">
+							<span className="text-sm font-medium text-kumo-default">Bio</span>
+							<textarea
+								className="min-h-24 w-full resize-y rounded-lg border border-kumo-line bg-kumo-recessed px-3 py-2 text-sm text-kumo-default placeholder:text-kumo-subtle focus:outline-none focus:ring-1 focus:ring-kumo-ring"
+								value={bio}
+								onChange={(e) => setBio(e.target.value)}
+								placeholder="Short intro — role, team, what you do"
+							/>
+						</label>
+						<Input
+							label="Location"
+							value={location}
+							onChange={(e) => setLocation(e.target.value)}
+							placeholder="Ho Chi Minh City"
+						/>
+						<Input
+							label="Website"
+							value={website}
+							onChange={(e) => setWebsite(e.target.value)}
+							placeholder="vsbg.vn"
 						/>
 						<Input label="Email" type="email" value={mailbox.email} disabled />
 					</div>
-				</div>
-
-				{/* Agent System Prompt */}
-				{SHOW_AGENT_SETTINGS && <div className="rounded-lg border border-kumo-line bg-kumo-base p-5">
-					<div className="flex items-center justify-between mb-4">
-						<div className="flex items-center gap-2">
-							<RobotIcon size={16} weight="duotone" className="text-kumo-subtle" />
-							<span className="text-sm font-medium text-kumo-default">
-								AI Agent Prompt
-							</span>
-							{isCustomPrompt ? (
-								<Badge variant="primary">Custom</Badge>
-							) : (
-								<Badge variant="secondary">Default</Badge>
-							)}
-						</div>
-						{isCustomPrompt && (
-							<Button
-								variant="ghost"
-								size="xs"
-								icon={<ArrowCounterClockwiseIcon size={14} />}
-								onClick={handleResetPrompt}
-							>
-								Reset to default
-							</Button>
-						)}
-					</div>
-					<p className="text-xs text-kumo-subtle mb-3">
-						Customize how the AI agent behaves for this mailbox.
-						Leave empty to use the built-in default prompt.
-					</p>
-					<textarea
-						value={agentPrompt}
-						onChange={(e) => setAgentPrompt(e.target.value)}
-						placeholder={PROMPT_PLACEHOLDER}
-						rows={12}
-						className="w-full resize-y rounded-lg border border-kumo-line bg-kumo-recessed px-3 py-2 text-xs text-kumo-default placeholder:text-kumo-subtle focus:outline-none focus:ring-1 focus:ring-kumo-ring font-mono leading-relaxed"
-					/>
-					<p className="text-xs text-kumo-subtle mt-2">
-						The prompt is sent as the system message to the AI model.
-						It controls the agent's personality, writing style, and behavior rules.
-					</p>
-				</div>}
-
-				{/* Save */}
-				<div className="flex justify-end">
-					<Button variant="primary" onClick={handleSave} loading={isSaving}>
-						Save Changes
-					</Button>
 				</div>
 			</div>
 		</div>

@@ -119,6 +119,22 @@ const api = {
 		get<Mailbox>(`/api/v1/mailboxes/${mailboxId}`),
 	updateMailbox: (mailboxId: string, settings: unknown) =>
 		put<Mailbox>(`/api/v1/mailboxes/${mailboxId}`, { settings }),
+	uploadMailboxAvatar: (
+		mailboxId: string,
+		payload: { content: string; type: string },
+	) =>
+		put<{ avatarUpdatedAt: string }>(
+			`/api/v1/mailboxes/${mailboxId}/avatar`,
+			payload,
+		),
+	uploadMailboxCover: (
+		mailboxId: string,
+		payload: { content: string; type: string },
+	) =>
+		put<{ coverUpdatedAt: string }>(
+			`/api/v1/mailboxes/${mailboxId}/cover`,
+			payload,
+		),
 	deleteMailbox: (mailboxId: string) =>
 		del<void>(`/api/v1/mailboxes/${mailboxId}`),
 

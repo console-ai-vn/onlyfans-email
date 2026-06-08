@@ -52,6 +52,13 @@ import {
 	recordAudit,
 } from "./lib/audit";
 import { normalizeRetentionPolicyOptions } from "./lib/retention";
+import {
+	decodeAvatarUpload,
+	decodeCoverUpload,
+	profileAvatarKey,
+	profileCoverKey,
+} from "./lib/profile-avatar";
+import { normalizeEmail } from "./lib/access";
 
 type AppContext = Context<MailboxContext>;
 const ALLOW_FORWARDING = true;
@@ -91,6 +98,11 @@ const DraftBody = z.object({
 	in_reply_to: z.string().optional(),
 	thread_id: z.string().optional(),
 	draft_id: z.string().optional(),
+});
+
+const AvatarUploadBody = z.object({
+	content: z.string().min(1),
+	type: z.string().min(1),
 });
 
 const ContactProfilePatchBody = z.object({
@@ -163,6 +175,174 @@ app.use("/api/*", cors({
 		return undefined;
 	},
 }));
+
+async function assertOrgMemberProfileAccess(
+	env: Env,
+	accessEmail: string,
+	mailboxId: string,
+) {
+	const normalizedMailboxId = normalizeEmail(mailboxId);
+	const mailboxKey = `mailboxes/${normalizedMailboxId}.json`;
+	if (!(await env.BUCKET.head(mailboxKey))) {
+		return { ok: false as const, status: 404 as const, error: "Not found" };
+	}
+
+	const accessOptions = await getLegacyAccessOptions(env);
+	if (!accessEmail && !accessOptions.allowMissingIdentity) {
+		return { ok: false as const, status: 403 as const, error: "Forbidden" };
+	}
+
+	if (accessEmail) {
+		const config = await getDomainConfig(env);
+		const visible = filterMailboxIdsForAccess(
+			config.emailAddresses,
+			accessEmail,
+			accessOptions,
+		);
+		if (visible.length === 0) {
+			return { ok: false as const, status: 403 as const, error: "Forbidden" };
+		}
+	}
+
+	return { ok: true as const, mailboxId: normalizedMailboxId };
+}
+
+app.get("/api/v1/mailboxes/:mailboxId/avatar", async (c) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	const access = await assertOrgMemberProfileAccess(
+		c.env,
+		c.var.accessEmail,
+		mailboxId,
+	);
+	if (!access.ok) return c.json({ error: access.error }, access.status);
+
+	const obj = await c.env.BUCKET.get(profileAvatarKey(access.mailboxId));
+	if (!obj) return c.body(null, 404);
+
+	const headers = new Headers();
+	headers.set("Content-Type", obj.httpMetadata?.contentType || "image/jpeg");
+	headers.set("Cache-Control", "public, max-age=300");
+	if (obj.etag) headers.set("ETag", obj.etag);
+	return new Response(obj.body, { headers });
+});
+
+app.get("/api/v1/mailboxes/:mailboxId/cover", async (c) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	const access = await assertOrgMemberProfileAccess(
+		c.env,
+		c.var.accessEmail,
+		mailboxId,
+	);
+	if (!access.ok) return c.json({ error: access.error }, access.status);
+
+	const obj = await c.env.BUCKET.get(profileCoverKey(access.mailboxId));
+	if (!obj) return c.body(null, 404);
+
+	const headers = new Headers();
+	headers.set("Content-Type", obj.httpMetadata?.contentType || "image/jpeg");
+	headers.set("Cache-Control", "public, max-age=300");
+	if (obj.etag) headers.set("ETag", obj.etag);
+	return new Response(obj.body, { headers });
+});
+
+app.put("/api/v1/mailboxes/:mailboxId/avatar", requireMailbox, async (c: AppContext) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
+	let body: z.infer<typeof AvatarUploadBody>;
+	try {
+		body = AvatarUploadBody.parse(await c.req.json());
+	} catch {
+		return c.json({ error: "Invalid avatar payload" }, 400);
+	}
+
+	let decoded: ReturnType<typeof decodeAvatarUpload>;
+	try {
+		decoded = decodeAvatarUpload(body);
+	} catch (error) {
+		return c.json(
+			{ error: error instanceof Error ? error.message : "Invalid avatar" },
+			400,
+		);
+	}
+
+	const avatarKey = profileAvatarKey(mailboxId);
+	await c.env.BUCKET.put(avatarKey, decoded.bytes, {
+		httpMetadata: { contentType: decoded.contentType },
+	});
+
+	const settingsKey = `mailboxes/${mailboxId}.json`;
+	const settingsObj = await c.env.BUCKET.get(settingsKey);
+	const settings = settingsObj
+		? ((await settingsObj.json()) as Record<string, unknown>)
+		: {};
+	const avatarUpdatedAt = new Date().toISOString();
+	const nextSettings = { ...settings, avatarUpdatedAt };
+	await c.env.BUCKET.put(settingsKey, JSON.stringify(nextSettings));
+
+	void recordAudit(c.var.mailboxStub, {
+		actor_email: getAuditActor(c, mailboxId),
+		action: "mailbox.avatar_update",
+		target_type: "mailbox",
+		target_id: mailboxId,
+	});
+
+	return c.json({ avatarUpdatedAt });
+});
+
+app.put("/api/v1/mailboxes/:mailboxId/cover", requireMailbox, async (c: AppContext) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
+	let body: z.infer<typeof AvatarUploadBody>;
+	try {
+		body = AvatarUploadBody.parse(await c.req.json());
+	} catch {
+		return c.json({ error: "Invalid cover payload" }, 400);
+	}
+
+	let decoded: ReturnType<typeof decodeCoverUpload>;
+	try {
+		decoded = decodeCoverUpload(body);
+	} catch (error) {
+		return c.json(
+			{ error: error instanceof Error ? error.message : "Invalid cover" },
+			400,
+		);
+	}
+
+	const coverKey = profileCoverKey(mailboxId);
+	await c.env.BUCKET.put(coverKey, decoded.bytes, {
+		httpMetadata: { contentType: decoded.contentType },
+	});
+
+	const settingsKey = `mailboxes/${mailboxId}.json`;
+	const settingsObj = await c.env.BUCKET.get(settingsKey);
+	const settings = settingsObj
+		? ((await settingsObj.json()) as Record<string, unknown>)
+		: {};
+	const coverUpdatedAt = new Date().toISOString();
+	const nextSettings = { ...settings, coverUpdatedAt };
+	await c.env.BUCKET.put(settingsKey, JSON.stringify(nextSettings));
+
+	void recordAudit(c.var.mailboxStub, {
+		actor_email: getAuditActor(c, mailboxId),
+		action: "mailbox.cover_update",
+		target_type: "mailbox",
+		target_id: mailboxId,
+	});
+
+	return c.json({ coverUpdatedAt });
+});
+
 app.use("/api/v1/mailboxes/:mailboxId/*", requireMailbox);
 
 // -- Config ---------------------------------------------------------
@@ -374,6 +554,8 @@ app.delete("/api/v1/mailboxes/:mailboxId", async (c) => {
 		}
 	).delete(doId);
 	await c.env.BUCKET.delete(key);
+	await c.env.BUCKET.delete(profileAvatarKey(mailboxId));
+	await c.env.BUCKET.delete(profileCoverKey(mailboxId));
 
 	return c.body(null, 204);
 });

@@ -3,7 +3,7 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { Button, Input, Tooltip } from "@cloudflare/kumo";
-import { ClipboardTextIcon, GearSixIcon, GlobeIcon, ListIcon, MagnifyingGlassIcon, MoonIcon, SunIcon, XIcon } from "@phosphor-icons/react";
+import { ClipboardTextIcon, GlobeIcon, ListIcon, MagnifyingGlassIcon, MoonIcon, SunIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react";
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
@@ -173,11 +173,11 @@ export default function Header() {
 						</Tooltip>
 					</>
 				)}
-				<Tooltip content="Settings" side="bottom" asChild>
+				<Tooltip content="Profile" side="bottom" asChild>
 					<Button
 						variant={isSettingsActive ? "secondary" : "ghost"}
 						shape="square"
-						icon={<GearSixIcon size={20} />}
+						icon={<UserCircleIcon size={20} />}
 						onClick={() =>
 							navigate(
 								isSettingsActive
@@ -185,7 +185,7 @@ export default function Header() {
 									: `/mailbox/${mailboxId}/settings`,
 							)
 						}
-						aria-label="Settings"
+						aria-label="Profile"
 					/>
 				</Tooltip>
 			</div>

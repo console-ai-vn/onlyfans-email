@@ -12,6 +12,8 @@ import {
 	TrashIcon,
 } from "@phosphor-icons/react";
 import { formatListDate } from "shared/dates";
+import MailboxAvatar from "~/components/MailboxAvatar";
+import { getAvatarVersion, useAvatarVersionMap } from "~/hooks/useAvatarVersions";
 import { getSnippetText } from "~/lib/utils";
 import type { Email } from "~/types";
 
@@ -47,11 +49,18 @@ function hasUnread(email: Email): boolean {
 }
 
 function FeedAvatar({ email }: { email: Email }) {
-	const participant = email.contact_display_name || email.contact_email || email.sender;
+	const avatarVersions = useAvatarVersionMap();
+	const participantEmail = (email.contact_email || email.sender).trim().toLowerCase();
+	const participantName = email.contact_display_name || participantEmail;
+	const avatarVersion = getAvatarVersion(avatarVersions, participantEmail);
 	return (
-		<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-kumo-brand text-base font-bold uppercase text-white">
-			{participant.charAt(0)}
-		</div>
+		<MailboxAvatar
+			email={participantEmail}
+			name={participantName}
+			size="lg"
+			variant="brand"
+			avatarVersion={avatarVersion}
+		/>
 	);
 }
 

@@ -8,13 +8,11 @@ import {
 	ChatCircleTextIcon,
 	NotePencilIcon,
 	RobotIcon,
-	SidebarSimpleIcon,
 	XIcon,
 } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Folders } from "shared/folders";
-import SocialContextSheet from "~/components/conversation-social/SocialContextSheet";
 import AgentSidebar from "~/components/AgentSidebar";
 import EmailPanelDialogs from "~/components/email-panel/EmailPanelDialogs";
 import EmailPanelHeader from "~/components/email-panel/EmailPanelHeader";
@@ -35,11 +33,11 @@ import {
 	useReplyToEmail,
 	useSendEmail,
 	useThreadReplies,
-	useUpdateConversationState,
 	useUpdateEmail,
 } from "~/queries/emails";
 import { useFolders } from "~/queries/folders";
 import { useMailbox } from "~/queries/mailboxes";
+import { useAvatarVersionMap } from "~/hooks/useAvatarVersions";
 import { useUIStore } from "~/hooks/useUIStore";
 import type { ConversationEvent, ConversationState, Email, Folder, InternalNote, Mailbox } from "~/types";
 
@@ -68,19 +66,19 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 	const moveEmailMut = useMoveEmail();
 	const sendEmailMut = useSendEmail();
 	const replyMut = useReplyToEmail();
-	const updateConversationState = useUpdateConversationState();
 	const createInternalNote = useCreateInternalNote();
 	const { data: folders = [] } = useFolders(mailboxId) as { data?: Folder[] };
 	const { data: currentMailbox } = useMailbox(mailboxId) as {
 		data?: Mailbox;
 	};
+	const avatarVersions = useAvatarVersionMap();
 	const { closePanel, startCompose } = useUIStore();
 	const toastManager = useKumoToastManager();
 	const [isSending, setIsSending] = useState(false);
 	const [sourceViewEmail, setSourceViewEmail] = useState<Email | null>(null);
 	const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
 	const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
-	const [isContextOpen, setIsContextOpen] = useState(false);
+
 	const [isAgentOpen, setIsAgentOpen] = useState(false);
 	const [isNoteOpen, setIsNoteOpen] = useState(false);
 	const [noteBody, setNoteBody] = useState("");
@@ -133,10 +131,7 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 	const toggleStar = () => { if (mailboxId) updateEmail.mutate({ mailboxId, id: email.id, data: { starred: !email.starred } }); };
 	const handleMove = (folderId: string) => { if (mailboxId) { moveEmailMut.mutate({ mailboxId, id: email.id, folderId }); closePanel(); } };
 	const handleDelete = () => { if (mailboxId) { if (!window.confirm("Are you sure you want to delete this email?")) return; deleteEmailMut.mutate({ mailboxId, id: email.id }); closePanel(); } };
-	const handleStateChange = (patch: Partial<ConversationState>) => {
-		if (!mailboxId || !activeThreadId) return;
-		updateConversationState.mutate({ mailboxId, threadId: activeThreadId, state: patch });
-	};
+
 	const handleCreateNote = async () => {
 		if (!mailboxId || !activeThreadId || !noteBody.trim()) return;
 		await createInternalNote.mutateAsync({
@@ -275,6 +270,7 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 									email={msg}
 									mailboxId={mailboxId}
 									mailboxEmail={currentMailbox?.email}
+									avatarVersions={avatarVersions}
 									isLast={idx === timelineItems.length - 1}
 									isDraft={isDraft}
 									isSending={isDraft ? isSending : false}
@@ -296,6 +292,8 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 					<SingleMessageView
 						email={email}
 						mailboxId={mailboxId}
+						mailboxEmail={currentMailbox?.email}
+						avatarVersions={avatarVersions}
 						onPreviewImage={(url, filename) =>
 							setPreviewImage({ url, filename })
 						}
@@ -351,15 +349,6 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 				<Button
 					variant="secondary"
 					size="sm"
-					icon={<SidebarSimpleIcon size={16} />}
-					onClick={() => setIsContextOpen(true)}
-					className="flex-1"
-				>
-					Context
-				</Button>
-				<Button
-					variant="secondary"
-					size="sm"
 					icon={<RobotIcon size={16} />}
 					onClick={() => setIsAgentOpen(true)}
 					className="flex-1"
@@ -391,18 +380,6 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 					</div>
 				</div>
 			)}
-
-			<SocialContextSheet
-				open={isContextOpen}
-				mailboxId={mailboxId}
-				email={email}
-				state={conversationState}
-				notes={internalNotes}
-				events={conversationEvents}
-				isSaving={updateConversationState.isPending}
-				onClose={() => setIsContextOpen(false)}
-				onStateChange={handleStateChange}
-			/>
 
 			<EmailPanelDialogs
 				sourceViewEmail={sourceViewEmail}

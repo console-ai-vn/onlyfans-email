@@ -50,6 +50,61 @@ export function useUpdateMailbox() {
 	});
 }
 
+function uploadMailboxImage<T>(
+	mailboxId: string,
+	file: File,
+	upload: (mailboxId: string, payload: { content: string; type: string }) => Promise<T>,
+) {
+	return new Promise<T>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = async () => {
+			const result = reader.result;
+			if (typeof result !== "string") {
+				reject(new Error("Failed to read image"));
+				return;
+			}
+			const base64 = result.split(",")[1];
+			if (!base64) {
+				reject(new Error("Failed to read image"));
+				return;
+			}
+			try {
+				resolve(await upload(mailboxId, { content: base64, type: file.type }));
+			} catch (error) {
+				reject(error);
+			}
+		};
+		reader.onerror = () => reject(new Error("Failed to read image"));
+		reader.readAsDataURL(file);
+	});
+}
+
+function useInvalidateMailboxImages() {
+	const qc = useQueryClient();
+	return (mailboxId: string) => {
+		qc.invalidateQueries({ queryKey: queryKeys.mailboxes.detail(mailboxId) });
+		qc.invalidateQueries({ queryKey: queryKeys.mailboxes.all });
+	};
+}
+
+export function useUploadMailboxAvatar() {
+	const invalidate = useInvalidateMailboxImages();
+	return useMutation({
+		mutationFn: ({ mailboxId, file }: { mailboxId: string; file: File }) =>
+			uploadMailboxImage(mailboxId, file, api.uploadMailboxAvatar),
+		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
+	});
+}
+
+export function useUploadMailboxCover() {
+	const invalidate = useInvalidateMailboxImages();
+	return useMutation({
+		mutationFn: ({ mailboxId, file }: { mailboxId: string; file: File }) =>
+			uploadMailboxImage(mailboxId, file, api.uploadMailboxCover),
+		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
+	});
+}
+
 export function useDeleteMailbox() {
 	const qc = useQueryClient();
 	return useMutation({

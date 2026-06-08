@@ -6,6 +6,8 @@ export const AUDIT_ACTIONS = [
 	"draft.save",
 	"mailbox.create",
 	"mailbox.settings_update",
+	"mailbox.avatar_update",
+	"mailbox.cover_update",
 	"conversation.state_update",
 	"note.create",
 	"login.success",
