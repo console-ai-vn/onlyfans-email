@@ -60,7 +60,7 @@ export default function MemberProfileTrigger({
 			? "flex min-w-0 items-center gap-3 rounded-md text-left transition-colors hover:opacity-90"
 			: layout === "name-only"
 				? "max-w-full truncate rounded-md text-left transition-colors hover:text-kumo-brand"
-				: "rounded-full ring-2 ring-transparent transition-all hover:ring-kumo-brand/30 hover:opacity-95";
+				: "shrink-0 rounded-full ring-2 ring-kumo-line/80 transition-all hover:ring-kumo-brand/40 hover:opacity-95";
 
 	return (
 		<>

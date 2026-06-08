@@ -5,6 +5,7 @@ import {
 	PaperPlaneTiltIcon,
 	XIcon,
 } from "@phosphor-icons/react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router";
 import MailboxAvatar from "~/components/MailboxAvatar";
 import MailboxCover from "~/components/MailboxCover";
@@ -15,7 +16,6 @@ import {
 	useCoverVersionMap,
 } from "~/hooks/useAvatarVersions";
 import { useMemberCompose } from "~/hooks/useMemberCompose";
-import { useViewerEmail } from "~/hooks/useViewerEmail";
 import { useMailbox, useMailboxes } from "~/queries/mailboxes";
 import type { Mailbox } from "~/types";
 
@@ -61,8 +61,10 @@ export default function MemberProfileSheet({
 }: MemberProfileSheetProps) {
 	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const openMemberCompose = useMemberCompose();
-	const viewerEmail = useViewerEmail();
 	const normalized = email.trim().toLowerCase();
+	const activeMailboxId = decodeURIComponent(mailboxId ?? "")
+		.trim()
+		.toLowerCase();
 	const avatarVersions = useAvatarVersionMap();
 	const coverVersions = useCoverVersionMap();
 	const { data: mailboxes } = useMailboxes();
@@ -84,7 +86,7 @@ export default function MemberProfileSheet({
 	const isLoading = open && fetchPending && !mailbox;
 	const bio = settings?.bio?.trim();
 	const canMessage =
-		!!mailboxId && !!viewerEmail && viewerEmail !== profileEmail.toLowerCase();
+		!!activeMailboxId && activeMailboxId !== profileEmail.toLowerCase();
 
 	if (!open) return null;
 
@@ -92,9 +94,9 @@ export default function MemberProfileSheet({
 		openMemberCompose(profileEmail, onClose);
 	};
 
-	return (
+	const sheet = (
 		<div
-			className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 md:items-center"
+			className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-4 md:items-center"
 			onClick={onClose}
 			onKeyDown={(e) => e.key === "Escape" && onClose()}
 			role="presentation"
@@ -186,7 +188,7 @@ export default function MemberProfileSheet({
 					)}
 				</div>
 
-				{canMessage && !isLoading && mailbox && (
+				{canMessage && !isLoading && (
 					<div className="shrink-0 border-t border-kumo-line bg-kumo-base p-4">
 						<Button
 							variant="primary"
@@ -202,4 +204,8 @@ export default function MemberProfileSheet({
 			</div>
 		</div>
 	);
+
+	return typeof document !== "undefined"
+		? createPortal(sheet, document.body)
+		: sheet;
 }
