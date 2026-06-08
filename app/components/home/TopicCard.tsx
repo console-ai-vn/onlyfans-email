@@ -17,9 +17,10 @@ export default function TopicCard({ topic }: { topic: HomeTopic }) {
 			<div className="flex items-start gap-3">
 				<MemberProfileTrigger
 					email={topic.authorEmail}
-					avatarSize="md"
+					avatarSize="lg"
 					showName={false}
 					layout="avatar-only"
+					showFullBio
 				/>
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -27,9 +28,10 @@ export default function TopicCard({ topic }: { topic: HomeTopic }) {
 							email={topic.authorEmail}
 							showName
 							layout="name-only"
-							nameClassName="font-semibold"
+							nameClassName="font-semibold text-base"
+							showFullBio
 						/>
-						<span className="text-xs text-kumo-subtle shrink-0">
+						<span className="shrink-0 text-xs text-kumo-subtle">
 							{formatListDate(topic.createdAt)}
 						</span>
 					</div>

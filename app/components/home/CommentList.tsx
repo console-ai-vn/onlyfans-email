@@ -57,9 +57,10 @@ export default function CommentList({
 					>
 						<MemberProfileTrigger
 							email={comment.authorEmail}
-							avatarSize="sm"
+							avatarSize="md"
 							showName={false}
 							layout="avatar-only"
+							showFullBio
 						/>
 						<div className="min-w-0 flex-1">
 							<div className="flex items-center gap-2">
@@ -68,6 +69,7 @@ export default function CommentList({
 									showName
 									layout="name-only"
 									nameClassName="font-medium"
+									showFullBio
 								/>
 								<span className="text-xs text-kumo-subtle">
 									{formatListDate(comment.createdAt)}

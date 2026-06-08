@@ -5,8 +5,7 @@ import {
 	PaperPlaneTiltIcon,
 	XIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 import MailboxAvatar from "~/components/MailboxAvatar";
 import MailboxCover from "~/components/MailboxCover";
 import {
@@ -15,7 +14,8 @@ import {
 	useAvatarVersionMap,
 	useCoverVersionMap,
 } from "~/hooks/useAvatarVersions";
-import { useUIStore } from "~/hooks/useUIStore";
+import { useMemberCompose } from "~/hooks/useMemberCompose";
+import { useViewerEmail } from "~/hooks/useViewerEmail";
 import { useMailbox, useMailboxes } from "~/queries/mailboxes";
 import type { Mailbox } from "~/types";
 
@@ -23,9 +23,8 @@ interface MemberProfileSheetProps {
 	email: string;
 	open: boolean;
 	onClose: () => void;
+	showFullBio?: boolean;
 }
-
-const BIO_PREVIEW_CHARS = 140;
 
 function mailboxDisplayName(mailbox: Mailbox) {
 	return (
@@ -58,11 +57,11 @@ export default function MemberProfileSheet({
 	email,
 	open,
 	onClose,
+	showFullBio = false,
 }: MemberProfileSheetProps) {
 	const { mailboxId } = useParams<{ mailboxId: string }>();
-	const navigate = useNavigate();
-	const { startCompose, closeSidebar } = useUIStore();
-	const [bioExpanded, setBioExpanded] = useState(false);
+	const openMemberCompose = useMemberCompose();
+	const viewerEmail = useViewerEmail();
 	const normalized = email.trim().toLowerCase();
 	const avatarVersions = useAvatarVersionMap();
 	const coverVersions = useCoverVersionMap();
@@ -77,30 +76,37 @@ export default function MemberProfileSheet({
 	const settings = mailbox?.settings;
 	const profileEmail = mailbox?.email ?? normalized;
 	const avatarVersion =
-		getAvatarVersion(avatarVersions, profileEmail) ?? settings?.avatarUpdatedAt ?? null;
+		getAvatarVersion(avatarVersions, profileEmail) ??
+		settings?.avatarUpdatedAt ??
+		null;
 	const coverVersion =
 		getCoverVersion(coverVersions, profileEmail) ?? settings?.coverUpdatedAt ?? null;
 	const isLoading = open && fetchPending && !mailbox;
 	const bio = settings?.bio?.trim();
-	const bioNeedsExpand = !!bio && bio.length > BIO_PREVIEW_CHARS;
-
-	useEffect(() => {
-		setBioExpanded(false);
-	}, [normalized, open]);
+	const canMessage =
+		!!mailboxId && !!viewerEmail && viewerEmail !== profileEmail.toLowerCase();
 
 	if (!open) return null;
 
 	const handleMessage = () => {
-		if (!mailboxId) return;
-		onClose();
-		closeSidebar();
-		navigate(`/mailbox/${mailboxId}/emails/inbox`);
-		startCompose({ mode: "new", prefillTo: email.trim().toLowerCase() });
+		openMemberCompose(profileEmail, onClose);
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 md:items-center">
-			<div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-kumo-line bg-kumo-base shadow-xl">
+		<div
+			className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 md:items-center"
+			onClick={onClose}
+			onKeyDown={(e) => e.key === "Escape" && onClose()}
+			role="presentation"
+		>
+			<div
+				className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-kumo-line bg-kumo-base shadow-xl"
+				onClick={(e) => e.stopPropagation()}
+				onKeyDown={(e) => e.stopPropagation()}
+				role="dialog"
+				aria-modal="true"
+				aria-label={`${mailbox ? mailboxDisplayName(mailbox) : normalized} profile`}
+			>
 				<div className="relative shrink-0">
 					<MailboxCover
 						email={profileEmail}
@@ -153,52 +159,46 @@ export default function MemberProfileSheet({
 								{mailbox.email}
 							</a>
 
-							{bio && (
-								<div className="mt-4">
-									<p
-										className={`text-sm leading-relaxed text-kumo-strong whitespace-pre-wrap ${
-											!bioExpanded && bioNeedsExpand ? "line-clamp-4" : ""
-										}`}
-									>
+							<div className="mt-4">
+								<p className="text-xs font-medium uppercase tracking-wide text-kumo-subtle">
+									Bio
+								</p>
+								{bio ? (
+									<p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-kumo-strong">
 										{bio}
 									</p>
-									{bioNeedsExpand && (
-										<button
-											type="button"
-											onClick={() => setBioExpanded((value) => !value)}
-											className="mt-2 text-sm font-medium text-kumo-link hover:underline"
-										>
-											{bioExpanded ? "Show less" : "Show full bio"}
-										</button>
-									)}
-								</div>
-							)}
-
-							<div className="mt-4 space-y-2 text-sm text-kumo-subtle">
-								{settings?.location && (
-									<div className="flex items-center gap-2">
-										<MapPinIcon size={16} className="shrink-0" />
-										<span>{settings.location}</span>
-									</div>
+								) : (
+									<p className="mt-1 text-sm italic text-kumo-subtle">
+										{showFullBio
+											? "No bio yet."
+											: "This teammate has not added a bio."}
+									</p>
 								)}
 							</div>
 
-							{mailboxId && mailboxId.toLowerCase() !== mailbox.email.toLowerCase() && (
-								<div className="mt-5">
-									<Button
-										variant="primary"
-										size="sm"
-										className="w-full"
-										icon={<PaperPlaneTiltIcon size={16} />}
-										onClick={handleMessage}
-									>
-										Send email
-									</Button>
+							{settings?.location && (
+								<div className="mt-4 flex items-center gap-2 text-sm text-kumo-subtle">
+									<MapPinIcon size={16} className="shrink-0" />
+									<span>{settings.location}</span>
 								</div>
 							)}
 						</>
 					)}
 				</div>
+
+				{canMessage && !isLoading && mailbox && (
+					<div className="shrink-0 border-t border-kumo-line bg-kumo-base p-4">
+						<Button
+							variant="primary"
+							size="sm"
+							className="w-full"
+							icon={<PaperPlaneTiltIcon size={16} />}
+							onClick={handleMessage}
+						>
+							Send
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);
