@@ -2,6 +2,9 @@ import { roleHasPermission, type MailboxRole } from "./permissions";
 
 export interface PublicMailboxSettings {
 	fromName?: string;
+	jobTitle?: string;
+	department?: string;
+	phone?: string;
 	bio?: string;
 	location?: string;
 	website?: string;
@@ -16,6 +19,9 @@ export function toPublicMailboxSettings(
 ): PublicMailboxSettings {
 	return {
 		fromName: pickString(settings?.fromName) ?? undefined,
+		jobTitle: pickString(settings?.jobTitle) ?? undefined,
+		department: pickString(settings?.department) ?? undefined,
+		phone: pickString(settings?.phone) ?? undefined,
 		bio: pickString(settings?.bio) ?? undefined,
 		location: pickString(settings?.location) ?? undefined,
 		website: pickString(settings?.website) ?? undefined,

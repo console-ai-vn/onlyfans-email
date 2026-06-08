@@ -10,6 +10,9 @@ export interface SignatureSettings {
 
 export interface MailboxSettings {
 	fromName?: string;
+	jobTitle?: string;
+	department?: string;
+	phone?: string;
 	bio?: string;
 	location?: string;
 	website?: string;
