@@ -1,12 +1,19 @@
 import { Button, Empty, Loader } from "@cloudflare/kumo";
-import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { useKumoToastManager } from "@cloudflare/kumo";
+import { ArrowLeftIcon, TrashIcon } from "@phosphor-icons/react";
 import { formatListDate } from "shared/dates";
-import { Link, useParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router";
 import CommentComposer from "~/components/home/CommentComposer";
 import CommentList from "~/components/home/CommentList";
 import ReactionBar from "~/components/home/ReactionBar";
 import MailboxAvatar from "~/components/MailboxAvatar";
-import { useHomeComments, useHomeTopic } from "~/queries/home-feed";
+import {
+	useDeleteHomeTopic,
+	useHomeComments,
+	useHomeTopic,
+} from "~/queries/home-feed";
+import { queryKeys } from "~/queries/keys";
 import api from "~/services/api";
 
 export function meta() {
@@ -18,8 +25,31 @@ export default function HomeTopicRoute() {
 		mailboxId: string;
 		topicId: string;
 	}>();
+	const navigate = useNavigate();
+	const toast = useKumoToastManager();
 	const { data: topic, isLoading, isError } = useHomeTopic(topicId);
 	const { data: commentsData, isLoading: commentsLoading } = useHomeComments(topicId);
+	const deleteTopic = useDeleteHomeTopic();
+	const { data: config } = useQuery({
+		queryKey: queryKeys.config,
+		queryFn: () => api.getConfig(),
+		staleTime: 60_000,
+	});
+	const isAdmin = config?.isAdmin ?? false;
+
+	const handleDeleteTopic = async () => {
+		if (!topicId || !topic) return;
+		if (!window.confirm(`Delete "${topic.title}" and all comments?`)) return;
+		try {
+			await deleteTopic.mutateAsync(topicId);
+			toast.add({ title: "Topic deleted" });
+			navigate(`/mailbox/${mailboxId}/feed`);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Could not delete topic";
+			toast.add({ title: message, variant: "error" });
+		}
+	};
 
 	if (isLoading) {
 		return (
@@ -42,6 +72,19 @@ export default function HomeTopicRoute() {
 			</Link>
 
 			<article className="rounded-xl border border-kumo-line bg-kumo-base p-5">
+				{isAdmin && (
+					<div className="mb-3 flex justify-end">
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={<TrashIcon size={16} />}
+							loading={deleteTopic.isPending}
+							onClick={() => void handleDeleteTopic()}
+						>
+							Delete topic
+						</Button>
+					</div>
+				)}
 				<div className="flex items-start gap-3">
 					<MailboxAvatar
 						email={topic.authorEmail}
@@ -86,7 +129,11 @@ export default function HomeTopicRoute() {
 						<Loader />
 					</div>
 				) : (
-					<CommentList comments={commentsData?.comments ?? []} />
+					<CommentList
+						comments={commentsData?.comments ?? []}
+						topicId={topic.id}
+						isAdmin={isAdmin}
+					/>
 				)}
 				<CommentComposer topicId={topic.id} />
 			</section>

@@ -18,6 +18,7 @@ export default [
 		index("routes/mailbox-index.tsx"),
 		route("feed", "routes/mailbox-feed-layout.tsx", [
 			index("routes/home-feed.tsx"),
+			route("manage", "routes/home-feed-manage.tsx"),
 			route("topics/:topicId", "routes/home-topic.tsx"),
 		]),
 		route("emails/:folder", "routes/email-list.tsx"),

@@ -1,7 +1,8 @@
 import { Button, Empty, Loader } from "@cloudflare/kumo";
-import { PlusIcon } from "@phosphor-icons/react";
+import { GearIcon, PlusIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link, useParams } from "react-router";
 import CreateTopicSheet from "~/components/home/CreateTopicSheet";
 import TopicCard from "~/components/home/TopicCard";
 import { useHomeTopics } from "~/queries/home-feed";
@@ -13,6 +14,7 @@ export function meta() {
 }
 
 export default function HomeFeedRoute() {
+	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const [page, setPage] = useState(1);
 	const [showCreate, setShowCreate] = useState(false);
 	const { data, isLoading, isError } = useHomeTopics(page);
@@ -51,7 +53,14 @@ export default function HomeFeedRoute() {
 						Topics, comments, and reactions — separate from personal mail.
 					</p>
 				</div>
-				{isAdmin && (
+				<div className="flex items-center gap-2">
+					{isAdmin && (
+						<Link to={`/mailbox/${mailboxId}/feed/manage`}>
+							<Button variant="secondary" size="sm" icon={<GearIcon size={16} />}>
+								Manage
+							</Button>
+						</Link>
+					)}
 					<Button
 						variant="primary"
 						size="sm"
@@ -60,17 +69,13 @@ export default function HomeFeedRoute() {
 					>
 						New topic
 					</Button>
-				)}
+				</div>
 			</div>
 
 			{topics.length === 0 ? (
 				<Empty
 					title="No topics yet"
-					description={
-						isAdmin
-							? "Create the first topic for your team."
-							: "Ask an admin to post the first topic."
-					}
+					description="Post the first topic for your team."
 				/>
 			) : (
 				<div className="space-y-4">

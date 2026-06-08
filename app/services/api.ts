@@ -338,6 +338,12 @@ const api = {
 			`/api/v1/home/topics/${encodeURIComponent(topicId)}/reaction`,
 			{ reaction },
 		),
+	deleteHomeTopic: (topicId: string) =>
+		del<void>(`/api/v1/home/topics/${encodeURIComponent(topicId)}`),
+	deleteHomeComment: (topicId: string, commentId: string) =>
+		del<{ topicId: string; commentId: string }>(
+			`/api/v1/home/topics/${encodeURIComponent(topicId)}/comments/${encodeURIComponent(commentId)}`,
+		),
 	homeTopicImageUrl: (topicId: string, imageId: string) =>
 		`/api/v1/home/topics/${encodeURIComponent(topicId)}/images/${encodeURIComponent(imageId)}`,
 	homeCommentImageUrl: (commentId: string, imageId: string) =>

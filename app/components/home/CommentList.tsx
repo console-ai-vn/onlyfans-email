@@ -1,9 +1,38 @@
+import { Button, Tooltip } from "@cloudflare/kumo";
+import { TrashIcon } from "@phosphor-icons/react";
+import { useKumoToastManager } from "@cloudflare/kumo";
 import { formatListDate } from "shared/dates";
 import MailboxAvatar from "~/components/MailboxAvatar";
+import { useDeleteHomeComment } from "~/queries/home-feed";
 import api from "~/services/api";
 import type { HomeComment } from "~/types";
 
-export default function CommentList({ comments }: { comments: HomeComment[] }) {
+interface CommentListProps {
+	comments: HomeComment[];
+	topicId: string;
+	isAdmin?: boolean;
+}
+
+export default function CommentList({
+	comments,
+	topicId,
+	isAdmin = false,
+}: CommentListProps) {
+	const toast = useKumoToastManager();
+	const deleteComment = useDeleteHomeComment(topicId);
+
+	const handleDelete = async (commentId: string) => {
+		if (!window.confirm("Delete this comment?")) return;
+		try {
+			await deleteComment.mutateAsync(commentId);
+			toast.add({ title: "Comment deleted" });
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Could not delete comment";
+			toast.add({ title: message, variant: "error" });
+		}
+	};
+
 	if (comments.length === 0) {
 		return (
 			<p className="py-6 text-center text-sm text-kumo-subtle">
@@ -29,6 +58,20 @@ export default function CommentList({ comments }: { comments: HomeComment[] }) {
 							<span className="text-xs text-kumo-subtle">
 								{formatListDate(comment.createdAt)}
 							</span>
+							{isAdmin && (
+								<Tooltip content="Delete comment" side="top" asChild>
+									<Button
+										variant="ghost"
+										shape="square"
+										size="sm"
+										className="ml-auto"
+										icon={<TrashIcon size={14} />}
+										loading={deleteComment.isPending}
+										onClick={() => void handleDelete(comment.id)}
+										aria-label="Delete comment"
+									/>
+								</Tooltip>
+							)}
 						</div>
 						{comment.bodyHtml && (
 							<div

@@ -3,10 +3,10 @@ import api from "~/services/api";
 import type { HomeTopic } from "~/types";
 import { queryKeys } from "./keys";
 
-export function useHomeTopics(page = 1) {
+export function useHomeTopics(page = 1, limit = 20) {
 	return useQuery({
-		queryKey: queryKeys.home.topics(page),
-		queryFn: () => api.listHomeTopics(page),
+		queryKey: queryKeys.home.topics(page, limit),
+		queryFn: () => api.listHomeTopics(page, limit),
 	});
 }
 
@@ -60,6 +60,31 @@ export function useSetHomeReaction(topicId: string) {
 			api.setHomeReaction(topicId, reaction),
 		onSuccess: (topic: HomeTopic) => {
 			qc.setQueryData(queryKeys.home.topic(topicId), topic);
+			qc.invalidateQueries({ queryKey: ["home", "topics"] });
+		},
+	});
+}
+
+export function useDeleteHomeTopic() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (topicId: string) => api.deleteHomeTopic(topicId),
+		onSuccess: (_data, topicId) => {
+			qc.removeQueries({ queryKey: queryKeys.home.topic(topicId) });
+			qc.removeQueries({ queryKey: queryKeys.home.comments(topicId) });
+			qc.invalidateQueries({ queryKey: ["home", "topics"] });
+		},
+	});
+}
+
+export function useDeleteHomeComment(topicId: string) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (commentId: string) =>
+			api.deleteHomeComment(topicId, commentId),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: queryKeys.home.topic(topicId) });
+			qc.invalidateQueries({ queryKey: queryKeys.home.comments(topicId) });
 			qc.invalidateQueries({ queryKey: ["home", "topics"] });
 		},
 	});

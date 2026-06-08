@@ -39,7 +39,7 @@ export async function assertHomeFeedAdmin(env: Env, accessEmail: string) {
 	const normalized = normalizeEmail(accessEmail);
 	const admins = normalizeEmailList(config.accessEmailAddresses);
 	if (!normalized || !admins.includes(normalized)) {
-		throw new HomeFeedAccessError("Admin access required to create topics");
+		throw new HomeFeedAccessError("Admin access required");
 	}
 }
 

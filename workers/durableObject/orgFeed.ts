@@ -364,6 +364,114 @@ export class OrgFeedDO extends DurableObject<Env> {
 			.get();
 	}
 
+	async deleteTopic(topicId: string) {
+		const topic = this.db
+			.select({ id: feedSchema.topics.id })
+			.from(feedSchema.topics)
+			.where(eq(feedSchema.topics.id, topicId))
+			.get();
+		if (!topic) return null;
+
+		const topicImages = this.db
+			.select({ r2_key: feedSchema.topicImages.r2_key })
+			.from(feedSchema.topicImages)
+			.where(eq(feedSchema.topicImages.topic_id, topicId))
+			.all();
+		const commentIds = this.db
+			.select({ id: feedSchema.comments.id })
+			.from(feedSchema.comments)
+			.where(eq(feedSchema.comments.topic_id, topicId))
+			.all()
+			.map((row) => row.id);
+		const commentImageKeys: string[] = [];
+		for (const commentId of commentIds) {
+			const images = this.db
+				.select({ r2_key: feedSchema.commentImages.r2_key })
+				.from(feedSchema.commentImages)
+				.where(eq(feedSchema.commentImages.comment_id, commentId))
+				.all();
+			for (const image of images) {
+				commentImageKeys.push(image.r2_key);
+			}
+		}
+
+		this.db
+			.delete(feedSchema.topicReactions)
+			.where(eq(feedSchema.topicReactions.topic_id, topicId))
+			.run();
+		for (const commentId of commentIds) {
+			this.db
+				.delete(feedSchema.commentImages)
+				.where(eq(feedSchema.commentImages.comment_id, commentId))
+				.run();
+		}
+		this.db
+			.delete(feedSchema.comments)
+			.where(eq(feedSchema.comments.topic_id, topicId))
+			.run();
+		this.db
+			.delete(feedSchema.topicImages)
+			.where(eq(feedSchema.topicImages.topic_id, topicId))
+			.run();
+		this.db
+			.delete(feedSchema.topics)
+			.where(eq(feedSchema.topics.id, topicId))
+			.run();
+
+		const r2Keys = [
+			...topicImages.map((image) => image.r2_key),
+			...commentImageKeys,
+		];
+		return { topicId, r2Keys };
+	}
+
+	async deleteComment(commentId: string) {
+		const comment = this.db
+			.select()
+			.from(feedSchema.comments)
+			.where(eq(feedSchema.comments.id, commentId))
+			.get();
+		if (!comment) return null;
+
+		const images = this.db
+			.select({ r2_key: feedSchema.commentImages.r2_key })
+			.from(feedSchema.commentImages)
+			.where(eq(feedSchema.commentImages.comment_id, commentId))
+			.all();
+
+		this.db
+			.delete(feedSchema.commentImages)
+			.where(eq(feedSchema.commentImages.comment_id, commentId))
+			.run();
+		this.db
+			.delete(feedSchema.comments)
+			.where(eq(feedSchema.comments.id, commentId))
+			.run();
+
+		const topicRow = this.db
+			.select({ comment_count: feedSchema.topics.comment_count })
+			.from(feedSchema.topics)
+			.where(eq(feedSchema.topics.id, comment.topic_id))
+			.get();
+		const now = new Date().toISOString();
+		if (topicRow) {
+			this.db
+				.update(feedSchema.topics)
+				.set({
+					comment_count: Math.max(0, topicRow.comment_count - 1),
+					updated_at: now,
+				})
+				.where(eq(feedSchema.topics.id, comment.topic_id))
+				.run();
+		}
+
+		return {
+			topicId: comment.topic_id,
+			commentId,
+			r2Keys: images.map((image) => image.r2_key),
+		};
+	}
+
 	private getUserReaction(topicId: string, userEmail: string) {
 		const row = this.db
 			.select({ reaction: feedSchema.topicReactions.reaction })

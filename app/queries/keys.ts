@@ -36,7 +36,7 @@ export const queryKeys = {
 		all: ["boards"] as const,
 	},
 	home: {
-		topics: (page: number) => ["home", "topics", page] as const,
+		topics: (page: number, limit = 20) => ["home", "topics", page, limit] as const,
 		topic: (id: string) => ["home", "topic", id] as const,
 		comments: (topicId: string) => ["home", "comments", topicId] as const,
 	},

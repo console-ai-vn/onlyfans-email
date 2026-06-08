@@ -105,12 +105,6 @@ homeApp.get("/topics/:topicId", async (c) => {
 });
 
 homeApp.post("/topics", async (c) => {
-	try {
-		await assertHomeFeedAdmin(c.env, c.var.accessEmail);
-	} catch (error) {
-		return handleHomeError(c, error);
-	}
-
 	const body = CreateTopicBody.parse(await c.req.json());
 	const bodyHtml = sanitizeFeedHtml(body.body);
 	const stub = getOrgFeedStub(c.env);
@@ -194,6 +188,40 @@ homeApp.put("/topics/:topicId/reaction", async (c) => {
 	} catch (error) {
 		return handleHomeError(c, error);
 	}
+});
+
+homeApp.delete("/topics/:topicId", async (c) => {
+	try {
+		await assertHomeFeedAdmin(c.env, c.var.accessEmail);
+	} catch (error) {
+		return handleHomeError(c, error);
+	}
+
+	const topicId = c.req.param("topicId")!;
+	const stub = getOrgFeedStub(c.env);
+	const result = await stub.deleteTopic(topicId);
+	if (!result) return c.json({ error: "Not found" }, 404);
+	if (result.r2Keys.length > 0) {
+		await c.env.BUCKET.delete(result.r2Keys);
+	}
+	return c.body(null, 204);
+});
+
+homeApp.delete("/topics/:topicId/comments/:commentId", async (c) => {
+	try {
+		await assertHomeFeedAdmin(c.env, c.var.accessEmail);
+	} catch (error) {
+		return handleHomeError(c, error);
+	}
+
+	const commentId = c.req.param("commentId")!;
+	const stub = getOrgFeedStub(c.env);
+	const result = await stub.deleteComment(commentId);
+	if (!result) return c.json({ error: "Not found" }, 404);
+	if (result.r2Keys.length > 0) {
+		await c.env.BUCKET.delete(result.r2Keys);
+	}
+	return c.json({ topicId: result.topicId, commentId: result.commentId });
 });
 
 homeApp.get("/topics/:topicId/images/:imageId", async (c) => {
