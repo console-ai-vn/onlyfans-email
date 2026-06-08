@@ -6,9 +6,16 @@ import {
 	PaperPlaneTiltIcon,
 	XIcon,
 } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import MailboxAvatar from "~/components/MailboxAvatar";
 import MailboxCover from "~/components/MailboxCover";
+import {
+	getAvatarVersion,
+	getCoverVersion,
+	useAvatarVersionMap,
+	useCoverVersionMap,
+} from "~/hooks/useAvatarVersions";
 import { useUIStore } from "~/hooks/useUIStore";
 import { useMailbox, useMailboxes } from "~/queries/mailboxes";
 import type { Mailbox } from "~/types";
@@ -18,6 +25,8 @@ interface MemberProfileSheetProps {
 	open: boolean;
 	onClose: () => void;
 }
+
+const BIO_PREVIEW_CHARS = 140;
 
 function mailboxDisplayName(mailbox: Mailbox) {
 	return (
@@ -63,7 +72,10 @@ export default function MemberProfileSheet({
 	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const navigate = useNavigate();
 	const { startCompose, closeSidebar } = useUIStore();
+	const [bioExpanded, setBioExpanded] = useState(false);
 	const normalized = email.trim().toLowerCase();
+	const avatarVersions = useAvatarVersionMap();
+	const coverVersions = useCoverVersionMap();
 	const { data: mailboxes } = useMailboxes();
 	const cached = findMailboxByEmail(mailboxes, normalized);
 	const {
@@ -73,7 +85,18 @@ export default function MemberProfileSheet({
 	} = useMailbox(open ? normalized : undefined);
 	const mailbox = fetchedMailbox ?? cached ?? (isError ? fallbackMailbox(normalized) : undefined);
 	const settings = mailbox?.settings;
+	const profileEmail = mailbox?.email ?? normalized;
+	const avatarVersion =
+		getAvatarVersion(avatarVersions, profileEmail) ?? settings?.avatarUpdatedAt ?? null;
+	const coverVersion =
+		getCoverVersion(coverVersions, profileEmail) ?? settings?.coverUpdatedAt ?? null;
 	const isLoading = open && fetchPending && !mailbox;
+	const bio = settings?.bio?.trim();
+	const bioNeedsExpand = !!bio && bio.length > BIO_PREVIEW_CHARS;
+
+	useEffect(() => {
+		setBioExpanded(false);
+	}, [normalized, open]);
 
 	if (!open) return null;
 
@@ -87,12 +110,12 @@ export default function MemberProfileSheet({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 md:items-center">
-			<div className="w-full max-w-md overflow-hidden rounded-xl border border-kumo-line bg-kumo-base shadow-xl">
-				<div className="relative">
+			<div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-kumo-line bg-kumo-base shadow-xl">
+				<div className="relative shrink-0">
 					<MailboxCover
-						email={email}
-						coverVersion={settings?.coverUpdatedAt}
-						className="h-24 w-full"
+						email={profileEmail}
+						coverVersion={coverVersion}
+						className="h-28 w-full"
 					/>
 					<Button
 						type="button"
@@ -106,14 +129,14 @@ export default function MemberProfileSheet({
 					/>
 				</div>
 
-				<div className="relative px-5 pb-5">
-					<div className="-mt-10 mb-3">
+				<div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+					<div className="-mt-12 mb-3">
 						<MailboxAvatar
-							email={email}
+							email={profileEmail}
 							name={mailbox ? mailboxDisplayName(mailbox) : undefined}
 							size="xl"
 							variant="brand"
-							avatarVersion={settings?.avatarUpdatedAt}
+							avatarVersion={avatarVersion}
 							className="ring-4 ring-kumo-base"
 						/>
 					</div>
@@ -137,10 +160,25 @@ export default function MemberProfileSheet({
 								{mailbox.email}
 							</a>
 
-							{settings?.bio && (
-								<p className="mt-4 text-sm leading-relaxed text-kumo-strong whitespace-pre-wrap">
-									{settings.bio}
-								</p>
+							{bio && (
+								<div className="mt-4">
+									<p
+										className={`text-sm leading-relaxed text-kumo-strong whitespace-pre-wrap ${
+											!bioExpanded && bioNeedsExpand ? "line-clamp-4" : ""
+										}`}
+									>
+										{bio}
+									</p>
+									{bioNeedsExpand && (
+										<button
+											type="button"
+											onClick={() => setBioExpanded((value) => !value)}
+											className="mt-2 text-sm font-medium text-kumo-link hover:underline"
+										>
+											{bioExpanded ? "Show less" : "Show full bio"}
+										</button>
+									)}
+								</div>
 							)}
 
 							<div className="mt-4 space-y-2 text-sm text-kumo-subtle">

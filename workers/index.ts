@@ -68,6 +68,7 @@ import {
 	profileCoverKey,
 } from "./lib/profile-avatar";
 import { normalizeEmail } from "./lib/access";
+import { isOrgMember } from "./lib/home-feed-access";
 import { homeApp } from "./routes/home-feed";
 
 type AppContext = Context<MailboxContext>;
@@ -187,17 +188,12 @@ app.use("/api/*", cors({
 	},
 }));
 
-async function assertOrgMemberProfileAccess(
+async function assertOrgMemberMediaAccess(
 	env: Env,
 	accessEmail: string,
 	mailboxId: string,
 ) {
-	const normalizedMailboxId = normalizeEmail(mailboxId);
-	const mailboxKey = `mailboxes/${normalizedMailboxId}.json`;
-	if (!(await env.BUCKET.head(mailboxKey))) {
-		return { ok: false as const, status: 404 as const, error: "Not found" };
-	}
-
+	const normalizedMailboxId = normalizeEmail(decodeURIComponent(mailboxId));
 	const accessOptions = await getLegacyAccessOptions(env);
 	if (!accessEmail && !accessOptions.allowMissingIdentity) {
 		return { ok: false as const, status: 403 as const, error: "Forbidden" };
@@ -205,12 +201,7 @@ async function assertOrgMemberProfileAccess(
 
 	if (accessEmail) {
 		const config = await getDomainConfig(env);
-		const visible = filterMailboxIdsForAccess(
-			config.emailAddresses,
-			accessEmail,
-			accessOptions,
-		);
-		if (visible.length === 0) {
+		if (!isOrgMember(accessEmail, config)) {
 			return { ok: false as const, status: 403 as const, error: "Forbidden" };
 		}
 	}
@@ -220,7 +211,7 @@ async function assertOrgMemberProfileAccess(
 
 app.get("/api/v1/mailboxes/:mailboxId/avatar", async (c) => {
 	const mailboxId = c.req.param("mailboxId")!;
-	const access = await assertOrgMemberProfileAccess(
+	const access = await assertOrgMemberMediaAccess(
 		c.env,
 		c.var.accessEmail,
 		mailboxId,
@@ -239,7 +230,7 @@ app.get("/api/v1/mailboxes/:mailboxId/avatar", async (c) => {
 
 app.get("/api/v1/mailboxes/:mailboxId/cover", async (c) => {
 	const mailboxId = c.req.param("mailboxId")!;
-	const access = await assertOrgMemberProfileAccess(
+	const access = await assertOrgMemberMediaAccess(
 		c.env,
 		c.var.accessEmail,
 		mailboxId,
@@ -529,7 +520,7 @@ app.post("/api/v1/mailboxes", async (c) => {
 });
 
 app.get("/api/v1/mailboxes/:mailboxId", async (c) => {
-	const mailboxId = c.req.param("mailboxId")!;
+	const mailboxId = normalizeEmail(decodeURIComponent(c.req.param("mailboxId")!));
 	const obj = await c.env.BUCKET.get(`mailboxes/${mailboxId}.json`);
 	if (!obj) return c.json({ error: "Not found" }, 404);
 	return c.json({ id: mailboxId, name: mailboxId, email: mailboxId, settings: await obj.json() });
