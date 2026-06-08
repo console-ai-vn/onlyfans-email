@@ -191,14 +191,4 @@ export interface HomeCommentListResponse {
 	limit: number;
 }
 
-export interface MemberProfile {
-	email: string;
-	displayName: string;
-	bio: string | null;
-	location: string | null;
-	website: string | null;
-	avatarUpdatedAt: string | null;
-	coverUpdatedAt: string | null;
-	hasAvatar: boolean;
-	hasCover: boolean;
-}
+

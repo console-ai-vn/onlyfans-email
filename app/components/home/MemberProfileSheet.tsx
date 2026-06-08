@@ -10,12 +10,22 @@ import { useNavigate, useParams } from "react-router";
 import MailboxAvatar from "~/components/MailboxAvatar";
 import MailboxCover from "~/components/MailboxCover";
 import { useUIStore } from "~/hooks/useUIStore";
-import { useMemberProfile } from "~/queries/member-profile";
+import { useMailbox, useMailboxes } from "~/queries/mailboxes";
+import type { Mailbox } from "~/types";
 
 interface MemberProfileSheetProps {
 	email: string;
 	open: boolean;
 	onClose: () => void;
+}
+
+function mailboxDisplayName(mailbox: Mailbox) {
+	return (
+		mailbox.settings?.fromName?.trim() ||
+		mailbox.name ||
+		mailbox.email.split("@")[0] ||
+		mailbox.email
+	);
 }
 
 function formatWebsite(url: string) {
@@ -35,7 +45,19 @@ export default function MemberProfileSheet({
 	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const navigate = useNavigate();
 	const { startCompose, closeSidebar } = useUIStore();
-	const { data: profile, isLoading, isError } = useMemberProfile(email, open);
+	const normalized = email.trim().toLowerCase();
+	const { data: mailboxes, isLoading: listLoading } = useMailboxes();
+	const cached = mailboxes?.find(
+		(mailbox) => mailbox.email.toLowerCase() === normalized,
+	);
+	const {
+		data: fetchedMailbox,
+		isLoading: fetchLoading,
+		isError,
+	} = useMailbox(open && !cached ? normalized : undefined);
+	const mailbox = cached ?? fetchedMailbox;
+	const settings = mailbox?.settings;
+	const isLoading = open && (listLoading || (!cached && fetchLoading));
 
 	if (!open) return null;
 
@@ -53,7 +75,7 @@ export default function MemberProfileSheet({
 				<div className="relative">
 					<MailboxCover
 						email={email}
-						coverVersion={profile?.coverUpdatedAt}
+						coverVersion={settings?.coverUpdatedAt}
 						className="h-24 w-full"
 					/>
 					<Button
@@ -72,10 +94,10 @@ export default function MemberProfileSheet({
 					<div className="-mt-10 mb-3">
 						<MailboxAvatar
 							email={email}
-							name={profile?.displayName}
+							name={mailbox ? mailboxDisplayName(mailbox) : undefined}
 							size="xl"
 							variant="brand"
-							avatarVersion={profile?.avatarUpdatedAt}
+							avatarVersion={settings?.avatarUpdatedAt}
 							className="ring-4 ring-kumo-base"
 						/>
 					</div>
@@ -84,54 +106,54 @@ export default function MemberProfileSheet({
 						<div className="flex justify-center py-8">
 							<Loader />
 						</div>
-					) : isError || !profile ? (
+					) : isError || !mailbox ? (
 						<p className="py-6 text-sm text-kumo-subtle">Could not load profile.</p>
 					) : (
 						<>
 							<h2 className="text-lg font-semibold text-kumo-default">
-								{profile.displayName}
+								{mailboxDisplayName(mailbox)}
 							</h2>
 							<a
-								href={`mailto:${profile.email}`}
+								href={`mailto:${mailbox.email}`}
 								className="mt-1 inline-flex items-center gap-1.5 text-sm text-kumo-link hover:underline"
 							>
 								<EnvelopeSimpleIcon size={14} />
-								{profile.email}
+								{mailbox.email}
 							</a>
 
-							{profile.bio && (
+							{settings?.bio && (
 								<p className="mt-4 text-sm leading-relaxed text-kumo-strong whitespace-pre-wrap">
-									{profile.bio}
+									{settings.bio}
 								</p>
 							)}
 
 							<div className="mt-4 space-y-2 text-sm text-kumo-subtle">
-								{profile.location && (
+								{settings?.location && (
 									<div className="flex items-center gap-2">
 										<MapPinIcon size={16} className="shrink-0" />
-										<span>{profile.location}</span>
+										<span>{settings.location}</span>
 									</div>
 								)}
-								{profile.website && (
+								{settings?.website && (
 									<div className="flex items-center gap-2">
 										<GlobeIcon size={16} className="shrink-0" />
 										<a
 											href={
-												profile.website.includes("://")
-													? profile.website
-													: `https://${profile.website}`
+												settings.website.includes("://")
+													? settings.website
+													: `https://${settings.website}`
 											}
 											target="_blank"
 											rel="noopener noreferrer"
 											className="text-kumo-link hover:underline"
 										>
-											{formatWebsite(profile.website)}
+											{formatWebsite(settings.website)}
 										</a>
 									</div>
 								)}
 							</div>
 
-							{mailboxId && mailboxId.toLowerCase() !== profile.email.toLowerCase() && (
+							{mailboxId && mailboxId.toLowerCase() !== mailbox.email.toLowerCase() && (
 								<div className="mt-5">
 									<Button
 										variant="primary"
