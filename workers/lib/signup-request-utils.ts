@@ -21,3 +21,19 @@ export function defaultMailboxSettings(displayName: string) {
 		autoReply: { enabled: false, subject: "", message: "" },
 	};
 }
+
+export function buildApprovalNote(
+	actorEmail: string,
+	mailboxEmail: string,
+	personalEmail: string,
+	accessOtpAdded: boolean,
+) {
+	const otpStatus = accessOtpAdded
+		? "OTP allowlist updated automatically"
+		: "OTP allowlist not updated automatically";
+	return `Approved by ${normalizeSignupEmail(actorEmail)}. Mailbox ${normalizeSignupEmail(mailboxEmail)}. OTP ${normalizeSignupEmail(personalEmail)}. ${otpStatus}.`;
+}
+
+export function buildRejectionNote(actorEmail: string) {
+	return `Rejected by ${normalizeSignupEmail(actorEmail)}.`;
+}

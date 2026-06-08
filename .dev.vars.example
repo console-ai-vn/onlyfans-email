@@ -3,6 +3,11 @@
 POLICY_AUD=your-access-policy-audience-tag
 TEAM_DOMAIN=https://your-team.cloudflareaccess.com
 
+# Signup OTP automation (one-time production setup):
+#   wrangler secret put CF_API_TOKEN
+# Optional wrangler vars or save via /admin/signups UI:
+#   CF_ACCOUNT_ID, ACCESS_OTP_LIST_ID (Zero Trust EMAIL list used by Access policy)
+
 # Production setup:
 #   wrangler secret put POLICY_AUD
 #   wrangler secret put TEAM_DOMAIN

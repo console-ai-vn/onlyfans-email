@@ -7,12 +7,16 @@ export interface DomainConfig {
 	domains: string[];
 	emailAddresses: string[];
 	accessEmailAddresses: string[];
+	cfAccountId?: string;
+	accessOtpListId?: string;
 }
 
 export interface DomainConfigPatch {
 	domains?: string[];
 	emailAddresses?: string[];
 	accessEmailAddresses?: string[];
+	cfAccountId?: string;
+	accessOtpListId?: string;
 }
 
 const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
@@ -23,12 +27,16 @@ function normalizeStringList(values: readonly string[] | undefined) {
 }
 
 export function normalizeDomainConfig(input: Partial<DomainConfig>): DomainConfig {
+	const cfAccountId = pickOptionalId(input.cfAccountId);
+	const accessOtpListId = pickOptionalId(input.accessOtpListId);
 	return {
 		domains: normalizeStringList(input.domains),
 		emailAddresses: [...new Set(normalizeEmailList(input.emailAddresses ?? []))],
 		accessEmailAddresses: [
 			...new Set(normalizeEmailList(input.accessEmailAddresses ?? [])),
 		],
+		...(cfAccountId ? { cfAccountId } : {}),
+		...(accessOtpListId ? { accessOtpListId } : {}),
 	};
 }
 
@@ -77,6 +85,12 @@ export function validateDomainConfig(config: DomainConfig): string | null {
 	return null;
 }
 
+function pickOptionalId(value: unknown) {
+	if (typeof value !== "string") return undefined;
+	const trimmed = value.trim();
+	return trimmed || undefined;
+}
+
 export async function updateDomainConfig(
 	env: Env,
 	patch: DomainConfigPatch,
@@ -87,6 +101,8 @@ export async function updateDomainConfig(
 		emailAddresses: patch.emailAddresses ?? current.emailAddresses,
 		accessEmailAddresses:
 			patch.accessEmailAddresses ?? current.accessEmailAddresses,
+		cfAccountId: patch.cfAccountId ?? current.cfAccountId,
+		accessOtpListId: patch.accessOtpListId ?? current.accessOtpListId,
 	});
 	const validationError = validateDomainConfig(next);
 	if (validationError) throw new Error(validationError);

@@ -7,6 +7,9 @@ export interface Env extends Cloudflare.Env {
 	TEAM_DOMAIN?: string;
 	ACCESS_EMAIL_ADDRESSES: Cloudflare.Env["ACCESS_EMAIL_ADDRESSES"];
 	DEMO_MODE?: string;
+	CF_ACCOUNT_ID?: string;
+	CF_API_TOKEN?: string;
+	ACCESS_OTP_LIST_ID?: string;
 }
 
 export interface AccessVariables {

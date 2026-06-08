@@ -1,15 +1,26 @@
 import { normalizeEmail } from "./access";
 import { getDomainConfig, updateDomainConfig } from "./admin";
+import {
+	appendEmailToZeroTrustList,
+	resolveAccessOtpAutomation,
+} from "./cloudflare-zero-trust-list";
 import { seedMailboxTeamAccess } from "./board-access";
 import { getMailboxStub } from "./email-helpers";
 import {
+	buildApprovalNote,
+	buildRejectionNote,
 	defaultMailboxSettings,
 	mergeMailboxAllowlist,
 	normalizeSignupEmail,
 } from "./signup-request-utils";
 import type { Env } from "../types";
 
-export { defaultMailboxSettings, mergeMailboxAllowlist } from "./signup-request-utils";
+export {
+	buildApprovalNote,
+	buildRejectionNote,
+	defaultMailboxSettings,
+	mergeMailboxAllowlist,
+} from "./signup-request-utils";
 
 export const SIGNUP_REQUEST_PREFIX = "signup-requests/";
 
@@ -31,11 +42,25 @@ export interface SignupRequestRecord {
 	rejectedBy?: string;
 }
 
+export interface SignupAutomationStatus {
+	ready: boolean;
+	hasApiToken: boolean;
+	accountId: string;
+	listId: string;
+}
+
 export interface ApproveSignupResult {
 	request: SignupRequestRecord;
 	mailboxCreated: boolean;
 	permissionGranted: boolean;
-	accessReminder: string;
+	accessOtpAdded: boolean;
+	accessOtpSkipped: boolean;
+	accessOtpError?: string;
+	fullyAutomated: boolean;
+}
+
+export interface RejectSignupResult {
+	request: SignupRequestRecord;
 }
 
 function parseSignupRequest(
@@ -137,11 +162,24 @@ async function saveSignupRequest(env: Env, request: SignupRequestRecord) {
 	});
 }
 
+export function getSignupAutomationStatus(
+	env: Env,
+	domainConfig: Awaited<ReturnType<typeof getDomainConfig>>,
+): SignupAutomationStatus {
+	const automation = resolveAccessOtpAutomation(env, domainConfig);
+	return {
+		ready: !!automation,
+		hasApiToken: !!env.CF_API_TOKEN?.trim(),
+		accountId: domainConfig.cfAccountId?.trim() || env.CF_ACCOUNT_ID?.trim() || "",
+		listId:
+			domainConfig.accessOtpListId?.trim() || env.ACCESS_OTP_LIST_ID?.trim() || "",
+	};
+}
+
 export async function approveSignupRequest(
 	env: Env,
 	requestId: string,
 	actorEmail: string,
-	adminNote = "",
 ): Promise<ApproveSignupResult> {
 	const request = await loadSignupRequest(env, requestId);
 	if (request.status !== "pending") {
@@ -179,13 +217,37 @@ export async function approveSignupRequest(
 		}
 	}
 
+	const domainConfigAfter = await getDomainConfig(env);
+	const automation = resolveAccessOtpAutomation(env, domainConfigAfter);
+	let accessOtpAdded = false;
+	let accessOtpSkipped = false;
+	let accessOtpError: string | undefined;
+	if (automation) {
+		const otpResult = await appendEmailToZeroTrustList(
+			automation,
+			personalEmail,
+			`VSBG Box signup ${request.desiredMailbox}`,
+		);
+		accessOtpAdded = otpResult.added;
+		accessOtpSkipped = otpResult.skipped;
+		accessOtpError = otpResult.error;
+	} else {
+		accessOtpError = "Cloudflare OTP automation is not configured";
+	}
+
 	const approvedAt = new Date().toISOString();
+	const actor = normalizeEmail(actorEmail);
 	const updated: SignupRequestRecord = {
 		...request,
 		status: "approved",
 		approvedAt,
-		approvedBy: normalizeEmail(actorEmail),
-		adminNote: adminNote.trim() || undefined,
+		approvedBy: actor,
+		adminNote: buildApprovalNote(
+			actor,
+			mailboxEmail,
+			personalEmail,
+			accessOtpAdded || accessOtpSkipped,
+		),
 	};
 	await saveSignupRequest(env, updated);
 
@@ -193,6 +255,31 @@ export async function approveSignupRequest(
 		request: updated,
 		mailboxCreated,
 		permissionGranted,
-		accessReminder: `Add ${personalEmail} to Cloudflare Access OTP allowlist for box.vsbg.vn`,
+		accessOtpAdded,
+		accessOtpSkipped,
+		accessOtpError,
+		fullyAutomated: (accessOtpAdded || accessOtpSkipped) && !accessOtpError,
 	};
+}
+
+export async function rejectSignupRequest(
+	env: Env,
+	requestId: string,
+	actorEmail: string,
+): Promise<RejectSignupResult> {
+	const request = await loadSignupRequest(env, requestId);
+	if (request.status !== "pending") {
+		throw new Error(`Signup request is already ${request.status}`);
+	}
+	const rejectedAt = new Date().toISOString();
+	const actor = normalizeEmail(actorEmail);
+	const updated: SignupRequestRecord = {
+		...request,
+		status: "rejected",
+		rejectedAt,
+		rejectedBy: actor,
+		adminNote: buildRejectionNote(actor),
+	};
+	await saveSignupRequest(env, updated);
+	return { request: updated };
 }

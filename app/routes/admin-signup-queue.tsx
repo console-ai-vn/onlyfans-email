@@ -2,16 +2,18 @@ import {
 	Badge,
 	Button,
 	Empty,
-	Input,
 	Loader,
 	useKumoToastManager,
 } from "@cloudflare/kumo";
-import { CheckCircleIcon, ClipboardTextIcon, UserPlusIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, UserPlusIcon, XCircleIcon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { formatListDate } from "shared/dates";
-import { useApproveSignupRequest, useSignupRequests } from "~/queries/admin";
+import {
+	useApproveSignupRequest,
+	useRejectSignupRequest,
+	useSignupRequests,
+} from "~/queries/admin";
 import api from "~/services/api";
 import { queryKeys } from "~/queries/keys";
 
@@ -22,20 +24,21 @@ function statusBadge(status: "pending" | "approved" | "rejected") {
 }
 
 export default function AdminSignupQueueRoute() {
-	const { mailboxId } = useParams<{ mailboxId: string }>();
 	const toast = useKumoToastManager();
 	const { data: config } = useQuery({
 		queryKey: queryKeys.config,
 		queryFn: () => api.getConfig(),
 	});
 	const isAdmin = config?.isAdmin ?? false;
-	const { data: requests = [], isLoading, refetch, isFetching } = useSignupRequests({
+	const { data, isLoading, isFetching } = useSignupRequests({
 		enabled: isAdmin,
 	});
 	const approveRequest = useApproveSignupRequest();
-	const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
-	const [lastReminder, setLastReminder] = useState("");
+	const rejectRequest = useRejectSignupRequest();
+	const [activeId, setActiveId] = useState<string | null>(null);
 
+	const requests = data?.requests ?? [];
+	const automationReady = data?.automation?.ready ?? false;
 	const pending = useMemo(
 		() => requests.filter((entry) => entry.status === "pending"),
 		[requests],
@@ -46,36 +49,38 @@ export default function AdminSignupQueueRoute() {
 	);
 
 	const handleApprove = async (requestId: string) => {
+		setActiveId(requestId);
 		try {
-			const result = await approveRequest.mutateAsync({
-				requestId,
-				adminNote: adminNotes[requestId]?.trim(),
-			});
-			setLastReminder(result.accessReminder);
-			setAdminNotes((current) => {
-				const next = { ...current };
-				delete next[requestId];
-				return next;
-			});
+			const result = await approveRequest.mutateAsync(requestId);
+			const detail = result.fullyAutomated
+				? "Mailbox + quyền + OTP allowlist xong. User login được luôn."
+				: result.accessOtpError ||
+					"Mailbox đã tạo. Kiểm tra OTP automation config.";
 			toast.add({
-				title: "Signup approved",
-				description: result.mailboxCreated
-					? "Mailbox created and allowlist updated."
-					: "Allowlist and permissions updated.",
+				title: result.fullyAutomated ? "Duyệt xong — full auto" : "Duyệt xong — cần check OTP",
+				description: detail,
+				variant: result.fullyAutomated ? undefined : "error",
 			});
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Could not approve signup";
+				error instanceof Error ? error.message : "Không duyệt được";
 			toast.add({ title: message, variant: "error" });
+		} finally {
+			setActiveId(null);
 		}
 	};
 
-	const copyReminder = async (text: string) => {
+	const handleReject = async (requestId: string) => {
+		setActiveId(requestId);
 		try {
-			await navigator.clipboard.writeText(text);
-			toast.add({ title: "Copied Access reminder" });
-		} catch {
-			toast.add({ title: "Could not copy", variant: "error" });
+			await rejectRequest.mutateAsync(requestId);
+			toast.add({ title: "Đã từ chối" });
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Không từ chối được";
+			toast.add({ title: message, variant: "error" });
+		} finally {
+			setActiveId(null);
 		}
 	};
 
@@ -100,157 +105,117 @@ export default function AdminSignupQueueRoute() {
 	}
 
 	return (
-		<div className="max-w-4xl px-4 py-8 md:px-8 space-y-6">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<h1 className="text-xl font-semibold text-kumo-default">Signup queue</h1>
-					<p className="mt-1 text-sm text-kumo-subtle">
-						Duyệt yêu cầu từ start.vsbg.vn — 1 click tạo mailbox + grant member.
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Link to={`/mailbox/${mailboxId}/admin/domains`}>
-						<Button variant="secondary" size="sm">
-							Domain admin
-						</Button>
-					</Link>
-					<Button
-						variant="ghost"
-						size="sm"
-						loading={isFetching}
-						onClick={() => void refetch()}
-					>
-						Refresh
-					</Button>
-				</div>
+		<div className="max-w-3xl px-4 py-8 md:px-8 space-y-5">
+			<div className="flex flex-wrap items-center gap-2">
+				<h1 className="text-xl font-semibold text-kumo-default">Duyệt đăng ký</h1>
+				{automationReady ? (
+					<Badge variant="success">Full auto</Badge>
+				) : (
+					<Badge variant="outline">OTP chưa config</Badge>
+				)}
+				{isFetching && !isLoading && <Loader size="sm" />}
 			</div>
-
-			{lastReminder && (
-				<div className="rounded-xl border border-amber-300/40 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-					<div className="font-semibold">Bước cuối — Cloudflare Access OTP</div>
-					<p className="mt-1">{lastReminder}</p>
-					<Button
-						variant="secondary"
-						size="sm"
-						className="mt-3"
-						icon={<ClipboardTextIcon size={14} />}
-						onClick={() => void copyReminder(lastReminder)}
-					>
-						Copy reminder
-					</Button>
-				</div>
-			)}
 
 			{isLoading ? (
 				<div className="flex justify-center py-16">
 					<Loader />
 				</div>
-			) : requests.length === 0 ? (
+			) : pending.length === 0 ? (
 				<Empty
 					icon={<UserPlusIcon size={48} className="text-kumo-inactive" />}
-					title="No signup requests"
-					description="New requests from the public landing form will appear here."
+					title="Không có request chờ"
+					description="Form start.vsbg.vn sẽ hiện ở đây khi có người đăng ký."
 				/>
 			) : (
-				<div className="space-y-8">
-					<section className="space-y-3">
-						<h2 className="text-base font-semibold text-kumo-default">
-							Pending ({pending.length})
-						</h2>
-						{pending.length === 0 ? (
-							<p className="text-sm text-kumo-subtle">Không có request chờ duyệt.</p>
-						) : (
-							<div className="space-y-3">
-								{pending.map((entry) => (
-									<article
-										key={entry.id}
-										className="rounded-xl border border-kumo-line bg-kumo-base p-4 shadow-sm"
-									>
-										<div className="flex flex-wrap items-start justify-between gap-3">
-											<div>
-												<div className="flex flex-wrap items-center gap-2">
-													<h3 className="text-base font-semibold text-kumo-default">
-														{entry.displayName}
-													</h3>
-													{statusBadge(entry.status)}
-												</div>
-												<p className="mt-1 text-sm text-kumo-subtle">
-													{formatListDate(entry.createdAt)}
-												</p>
-											</div>
-											<Button
-												variant="primary"
-												size="sm"
-												icon={<CheckCircleIcon size={16} />}
-												loading={approveRequest.isPending}
-												onClick={() => void handleApprove(entry.id)}
-											>
-												Approve
-											</Button>
-										</div>
-										<dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-											<div>
-												<dt className="text-kumo-subtle">Mailbox</dt>
-												<dd className="font-medium text-kumo-default">
-													{entry.desiredMailbox}
-												</dd>
-											</div>
-											<div>
-												<dt className="text-kumo-subtle">OTP email</dt>
-												<dd className="font-medium text-kumo-default">
-													{entry.personalEmail}
-												</dd>
-											</div>
-										</dl>
-										{entry.note && (
-											<p className="mt-3 rounded-lg bg-kumo-recessed px-3 py-2 text-sm text-kumo-strong">
-												{entry.note}
-											</p>
-										)}
-										<div className="mt-4">
-											<Input
-												label="Admin note (optional)"
-												size="sm"
-												placeholder="Đã cấp OTP, role member..."
-												value={adminNotes[entry.id] ?? ""}
-												onChange={(e) =>
-													setAdminNotes((current) => ({
-														...current,
-														[entry.id]: e.target.value,
-													}))
-												}
-											/>
-										</div>
-									</article>
-								))}
-							</div>
-						)}
-					</section>
-
-					{processed.length > 0 && (
-						<section className="space-y-3">
-							<h2 className="text-base font-semibold text-kumo-default">Processed</h2>
-							<ul className="divide-y divide-kumo-line rounded-xl border border-kumo-line bg-kumo-base">
-								{processed.map((entry) => (
-									<li key={entry.id} className="px-4 py-3 text-sm">
+				<div className="space-y-3">
+					{pending.map((entry) => {
+						const busy = activeId === entry.id;
+						return (
+							<article
+								key={entry.id}
+								className="rounded-xl border border-kumo-line bg-kumo-base p-4 shadow-sm"
+							>
+								<div className="flex flex-wrap items-start justify-between gap-3">
+									<div>
 										<div className="flex flex-wrap items-center gap-2">
-											<span className="font-medium text-kumo-default">
+											<h2 className="text-lg font-semibold text-kumo-default">
 												{entry.displayName}
-											</span>
+											</h2>
 											{statusBadge(entry.status)}
 										</div>
-										<div className="mt-1 text-kumo-subtle">
-											{entry.desiredMailbox} · OTP {entry.personalEmail}
-										</div>
-										{entry.adminNote && (
-											<div className="mt-1 text-kumo-strong">{entry.adminNote}</div>
-										)}
-									</li>
-								))}
-							</ul>
-						</section>
-					)}
+										<p className="mt-1 text-xs text-kumo-subtle">
+											{formatListDate(entry.createdAt)}
+										</p>
+									</div>
+									<div className="flex items-center gap-2">
+										<Button
+											variant="secondary"
+											size="sm"
+											icon={<XCircleIcon size={16} />}
+											loading={busy && rejectRequest.isPending}
+											disabled={busy}
+											onClick={() => void handleReject(entry.id)}
+										>
+											Từ chối
+										</Button>
+										<Button
+											variant="primary"
+											size="sm"
+											icon={<CheckCircleIcon size={16} />}
+											loading={busy && approveRequest.isPending}
+											disabled={busy}
+											onClick={() => void handleApprove(entry.id)}
+										>
+											Duyệt
+										</Button>
+									</div>
+								</div>
+								<dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+									<div className="rounded-lg bg-kumo-recessed px-3 py-2">
+										<dt className="text-xs uppercase tracking-wide text-kumo-subtle">
+											Mailbox
+										</dt>
+										<dd className="mt-1 font-semibold text-kumo-default">
+											{entry.desiredMailbox}
+										</dd>
+									</div>
+									<div className="rounded-lg bg-kumo-recessed px-3 py-2">
+										<dt className="text-xs uppercase tracking-wide text-kumo-subtle">
+											OTP email
+										</dt>
+										<dd className="mt-1 font-semibold text-kumo-default">
+											{entry.personalEmail}
+										</dd>
+									</div>
+								</dl>
+								{entry.note && (
+									<p className="mt-3 text-sm text-kumo-strong">{entry.note}</p>
+								)}
+							</article>
+						);
+					})}
 				</div>
+			)}
+
+			{processed.length > 0 && (
+				<details className="rounded-xl border border-kumo-line bg-kumo-base">
+					<summary className="cursor-pointer px-4 py-3 text-sm font-medium text-kumo-default">
+						Đã xử lý ({processed.length})
+					</summary>
+					<ul className="divide-y divide-kumo-line border-t border-kumo-line">
+						{processed.map((entry) => (
+							<li key={entry.id} className="px-4 py-3 text-sm">
+								<div className="flex flex-wrap items-center gap-2">
+									<span className="font-medium">{entry.displayName}</span>
+									{statusBadge(entry.status)}
+								</div>
+								<div className="mt-1 text-kumo-subtle">
+									{entry.desiredMailbox} · {entry.personalEmail}
+								</div>
+							</li>
+						))}
+					</ul>
+				</details>
 			)}
 		</div>
 	);

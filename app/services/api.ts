@@ -301,9 +301,24 @@ const api = {
 				approvedAt?: string;
 				approvedBy?: string;
 				adminNote?: string;
+				rejectedAt?: string;
+				rejectedBy?: string;
 			}>;
+			automation: {
+				ready: boolean;
+				hasApiToken: boolean;
+				accountId: string;
+				listId: string;
+			};
 		}>("/api/v1/admin/signup-requests"),
-	approveSignupRequest: (requestId: string, adminNote?: string) =>
+	updateSignupAutomation: (payload: { cfAccountId: string; accessOtpListId: string }) =>
+		put<{
+			ready: boolean;
+			hasApiToken: boolean;
+			accountId: string;
+			listId: string;
+		}>("/api/v1/admin/signup-automation", payload),
+	approveSignupRequest: (requestId: string) =>
 		post<{
 			request: {
 				id: string;
@@ -319,10 +334,26 @@ const api = {
 			};
 			mailboxCreated: boolean;
 			permissionGranted: boolean;
-			accessReminder: string;
-		}>(`/api/v1/admin/signup-requests/${encodeURIComponent(requestId)}/approve`, {
-			adminNote: adminNote ?? "",
-		}),
+			accessOtpAdded: boolean;
+			accessOtpSkipped: boolean;
+			accessOtpError?: string;
+			fullyAutomated: boolean;
+		}>(`/api/v1/admin/signup-requests/${encodeURIComponent(requestId)}/approve`, {}),
+	rejectSignupRequest: (requestId: string) =>
+		post<{
+			request: {
+				id: string;
+				status: "pending" | "approved" | "rejected";
+				createdAt: string;
+				displayName: string;
+				personalEmail: string;
+				desiredMailbox: string;
+				note: string;
+				rejectedAt?: string;
+				rejectedBy?: string;
+				adminNote?: string;
+			};
+		}>(`/api/v1/admin/signup-requests/${encodeURIComponent(requestId)}/reject`, {}),
 	listMailboxPermissions: (mailboxId: string) =>
 		get<Array<{
 			user_email: string;

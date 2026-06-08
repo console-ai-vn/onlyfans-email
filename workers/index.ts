@@ -77,7 +77,9 @@ import { roleHasPermission } from "./lib/permissions";
 import { assertSignupRateLimit } from "./lib/signup-rate-limit";
 import {
 	approveSignupRequest,
+	getSignupAutomationStatus,
 	listSignupRequests,
+	rejectSignupRequest,
 } from "./lib/signup-requests";
 import { resolveContextMailboxRole } from "./lib/mailbox";
 import { homeApp } from "./routes/home-feed";
@@ -89,6 +91,8 @@ const DomainConfigBody = z.object({
 	domains: z.array(z.string()).optional(),
 	emailAddresses: z.array(z.string().email()).optional(),
 	accessEmailAddresses: z.array(z.string().email()).optional(),
+	cfAccountId: z.string().trim().min(1).optional(),
+	accessOtpListId: z.string().trim().min(1).optional(),
 });
 
 const PermissionGrantBody = z.object({
@@ -96,8 +100,9 @@ const PermissionGrantBody = z.object({
 	role: z.enum(["manager", "member", "viewer"]),
 });
 
-const SignupApproveBody = z.object({
-	adminNote: z.string().trim().max(500).optional().default(""),
+const SignupAutomationBody = z.object({
+	cfAccountId: z.string().trim().min(1),
+	accessOtpListId: z.string().trim().min(1),
 });
 
 // -- Request body schemas (kept for validation) ---------------------
@@ -420,8 +425,24 @@ app.get("/api/v1/admin/signup-requests", async (c) => {
 		const config = await getDomainConfig(c.env);
 		assertAdminAccess(c.var.accessEmail, config.accessEmailAddresses);
 		const requests = await listSignupRequests(c.env);
-		return c.json({ requests });
+		const automation = getSignupAutomationStatus(c.env, config);
+		return c.json({ requests, automation });
 	} catch (error) {
+		return c.json({ error: error instanceof Error ? error.message : "Forbidden" }, 403);
+	}
+});
+
+app.put("/api/v1/admin/signup-automation", async (c) => {
+	try {
+		const current = await getDomainConfig(c.env);
+		assertAdminAccess(c.var.accessEmail, current.accessEmailAddresses);
+		const body = SignupAutomationBody.parse(await c.req.json());
+		const next = await updateDomainConfig(c.env, body);
+		return c.json(getSignupAutomationStatus(c.env, next));
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return c.json({ error: error.issues[0]?.message || "Invalid automation config" }, 400);
+		}
 		return c.json({ error: error instanceof Error ? error.message : "Forbidden" }, 403);
 	}
 });
@@ -430,24 +451,30 @@ app.post("/api/v1/admin/signup-requests/:requestId/approve", async (c) => {
 	try {
 		const config = await getDomainConfig(c.env);
 		assertAdminAccess(c.var.accessEmail, config.accessEmailAddresses);
-		let payload: unknown = {};
-		try {
-			payload = await c.req.json();
-		} catch {
-			payload = {};
-		}
-		const body = SignupApproveBody.parse(payload);
 		const result = await approveSignupRequest(
 			c.env,
 			c.req.param("requestId")!,
 			c.var.accessEmail,
-			body.adminNote,
 		);
 		return c.json(result);
 	} catch (error) {
-		if (error instanceof z.ZodError) {
-			return c.json({ error: error.issues[0]?.message || "Invalid approve payload" }, 400);
-		}
+		const message = error instanceof Error ? error.message : "Forbidden";
+		const status = message === "Signup request not found" ? 404 : message.includes("already") ? 409 : 403;
+		return c.json({ error: message }, status);
+	}
+});
+
+app.post("/api/v1/admin/signup-requests/:requestId/reject", async (c) => {
+	try {
+		const config = await getDomainConfig(c.env);
+		assertAdminAccess(c.var.accessEmail, config.accessEmailAddresses);
+		const result = await rejectSignupRequest(
+			c.env,
+			c.req.param("requestId")!,
+			c.var.accessEmail,
+		);
+		return c.json(result);
+	} catch (error) {
 		const message = error instanceof Error ? error.message : "Forbidden";
 		const status = message === "Signup request not found" ? 404 : message.includes("already") ? 409 : 403;
 		return c.json({ error: message }, status);
