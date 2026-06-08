@@ -20,12 +20,22 @@ import {
 	BoardAccessError,
 } from "../lib/boards";
 import { Folders } from "../../shared/folders";
-import type { MailboxContext } from "../lib/mailbox";
+import { assertContextPermission, type MailboxContext } from "../lib/mailbox";
+import { PermissionError } from "../lib/permissions";
 
 type AppContext = Context<MailboxContext>;
 type RateLimitStub = { checkSendRateLimit: () => Promise<string | null> };
 
 export async function handleReplyEmail(c: AppContext) {
+	try {
+		assertContextPermission(c.var.mailboxRole, "send");
+	} catch (error) {
+		if (error instanceof PermissionError) {
+			return c.json({ error: error.message }, 403);
+		}
+		throw error;
+	}
+
 	const mailboxId = c.req.param("mailboxId") ?? "";
 	const id = c.req.param("id") ?? "";
 	const body = SendEmailRequestSchema.parse(await c.req.json());
@@ -132,6 +142,15 @@ export async function handleReplyEmail(c: AppContext) {
 }
 
 export async function handleForwardEmail(c: AppContext) {
+	try {
+		assertContextPermission(c.var.mailboxRole, "send");
+	} catch (error) {
+		if (error instanceof PermissionError) {
+			return c.json({ error: error.message }, 403);
+		}
+		throw error;
+	}
+
 	const mailboxId = c.req.param("mailboxId") ?? "";
 	const id = c.req.param("id") ?? "";
 	const body = SendEmailRequestSchema.parse(await c.req.json());

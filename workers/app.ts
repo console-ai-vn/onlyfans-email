@@ -9,6 +9,12 @@ import { createRequestHandler } from "react-router";
 import { app as apiApp, receiveEmail } from "./index";
 import { EmailMCP } from "./mcp";
 import { getAccessEmail, normalizeEmail } from "./lib/access";
+import {
+	parseAgentMailboxId,
+	resolveToolMailboxRole,
+	withToolAccessEmail,
+} from "./lib/tool-authz";
+import { roleHasPermission } from "./lib/permissions";
 import type { AccessVariables, Env } from "./types";
 
 export { MailboxDO } from "./durableObject";
@@ -29,7 +35,18 @@ const requestHandler = createRequestHandler(
 	() => import("virtual:react-router/server-build"),
 	import.meta.env.MODE,
 );
-const mcpHandler = EmailMCP.serve("/mcp", { binding: "EMAIL_MCP" });
+const mcpHandler = EmailMCP.serve("/mcp", {
+	binding: "EMAIL_MCP",
+	corsOptions: import.meta.env.DEV
+		? {
+				origin: "http://localhost:5173",
+				methods: "GET, POST, DELETE, OPTIONS",
+			}
+		: {
+				origin: "https://box.vsbg.vn",
+				methods: "GET, POST, DELETE, OPTIONS",
+			},
+});
 
 function getAccessUrls(teamDomain: string) {
 	const certsPath = "/cdn-cgi/access/certs";
@@ -126,18 +143,41 @@ app.use("*", async (c, next) => {
 	c.res.headers.set("Content-Security-Policy", CSP_POLICY);
 });
 
+function forwardMcpRequest(c: {
+	req: { raw: Request };
+	var: AccessVariables;
+	env: Env;
+	executionCtx: { waitUntil: (promise: Promise<unknown>) => void };
+}) {
+	const accessEmail = c.var.accessEmail;
+	const request = withToolAccessEmail(c.req.raw, accessEmail);
+	const ctx = Object.assign(c.executionCtx, {
+		props: { accessEmail },
+	});
+	return mcpHandler.fetch(request, c.env, ctx as ExecutionContext);
+}
+
 // MCP server endpoint — used by AI coding tools (ProtoAgent, Claude Code, Cursor, etc.)
 // Must be before API routes and React Router catch-all
-app.all("/mcp", (c) => mcpHandler.fetch(c.req.raw, c.env, c.executionCtx as ExecutionContext));
-app.all("/mcp/*", (c) => mcpHandler.fetch(c.req.raw, c.env, c.executionCtx as ExecutionContext));
+app.all("/mcp", (c) => forwardMcpRequest(c));
+app.all("/mcp/*", (c) => forwardMcpRequest(c));
 
 // Mount the API routes
 app.route("/", apiApp);
 
 // Agent WebSocket routing - must be before React Router catch-all
 app.all("/agents/*", async (c) => {
+	const mailboxId = parseAgentMailboxId(new URL(c.req.url).pathname);
+	if (mailboxId) {
+		const role = await resolveToolMailboxRole(c.env, c.var.accessEmail, mailboxId);
+		if (!role || !roleHasPermission(role, "read")) {
+			return c.text("Forbidden", 403);
+		}
+	}
+
+	const request = withToolAccessEmail(c.req.raw, c.var.accessEmail);
 	return (
-		(await routeAgentRequest(c.req.raw, c.env)) ??
+		(await routeAgentRequest(request, c.env)) ??
 		c.text("Agent not found", 404)
 	);
 });

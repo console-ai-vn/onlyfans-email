@@ -1,3 +1,5 @@
+import { assertImageMagicBytes } from "./image-bytes";
+
 const ALLOWED_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const MAX_COVER_BYTES = 4 * 1024 * 1024;
@@ -30,6 +32,7 @@ function decodeProfileImageUpload(
 	for (let i = 0; i < binary.length; i++) {
 		bytes[i] = binary.charCodeAt(i);
 	}
+	assertImageMagicBytes(bytes, type);
 	return { bytes, contentType: type };
 }
 

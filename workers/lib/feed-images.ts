@@ -1,3 +1,5 @@
+import { assertImageMagicBytes } from "./image-bytes";
+
 const ALLOWED_FEED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_FEED_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -24,5 +26,6 @@ export function decodeFeedImageUpload(input: { content: string; type: string }) 
 	for (let i = 0; i < binary.length; i++) {
 		bytes[i] = binary.charCodeAt(i);
 	}
+	assertImageMagicBytes(bytes, type);
 	return { bytes, contentType: type };
 }

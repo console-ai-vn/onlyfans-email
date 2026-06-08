@@ -1,5 +1,6 @@
 import { normalizeEmail, normalizeEmailList } from "./access";
 import { getDomainConfig, type DomainConfig } from "./admin";
+import { sanitizeRichHtml } from "./html-sanitize";
 import type { Env } from "../types";
 
 export class HomeFeedAccessError extends Error {
@@ -44,8 +45,5 @@ export async function assertHomeFeedAdmin(env: Env, accessEmail: string) {
 }
 
 export function sanitizeFeedHtml(html: string): string {
-	return html
-		.replace(/<script[\s\S]*?<\/script>/gi, "")
-		.replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-		.trim();
+	return sanitizeRichHtml(html);
 }

@@ -69,6 +69,13 @@ import {
 } from "./lib/profile-avatar";
 import { normalizeEmail } from "./lib/access";
 import { isOrgMember } from "./lib/home-feed-access";
+import {
+	toMailboxSettingsForRole,
+	toPublicMailboxSettings,
+} from "./lib/public-mailbox-profile";
+import { roleHasPermission } from "./lib/permissions";
+import { assertSignupRateLimit } from "./lib/signup-rate-limit";
+import { resolveContextMailboxRole } from "./lib/mailbox";
 import { homeApp } from "./routes/home-feed";
 
 type AppContext = Context<MailboxContext>;
@@ -416,6 +423,19 @@ app.post("/api/public/signup-requests", async (c) => {
 		return c.json({ error: "Mailbox must use @vsbg.vn" }, 400);
 	}
 
+	const clientIp =
+		c.req.header("cf-connecting-ip") ||
+		c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+		"unknown";
+	try {
+		await assertSignupRateLimit(c.env, clientIp);
+	} catch (error) {
+		return c.json(
+			{ error: error instanceof Error ? error.message : "Too many requests" },
+			429,
+		);
+	}
+
 	const requestId = crypto.randomUUID();
 	const createdAt = new Date().toISOString();
 	await c.env.BUCKET.put(
@@ -479,7 +499,23 @@ app.get("/api/v1/mailboxes", async (c) => {
 	const enriched = await Promise.all(
 		visible.map(async (mailbox) => {
 			const settings = await loadMailboxSettings(c.env.BUCKET, mailbox.id);
-			return { ...mailbox, name: mailbox.id, settings };
+			const stub = c.env.MAILBOX.get(c.env.MAILBOX.idFromName(mailbox.id));
+			const role = await resolveContextMailboxRole(
+				c.env,
+				c.var.accessEmail,
+				mailbox.id,
+				stub,
+			);
+			const safeSettings =
+				role && roleHasPermission(role, "read")
+					? toMailboxSettingsForRole(
+							settings as Record<string, unknown>,
+							role,
+							c.var.accessEmail,
+							mailbox.id,
+						)
+					: toPublicMailboxSettings(settings as Record<string, unknown>);
+			return { ...mailbox, name: mailbox.id, settings: safeSettings };
 		}),
 	);
 	return c.json(enriched);
@@ -523,7 +559,37 @@ app.get("/api/v1/mailboxes/:mailboxId", async (c) => {
 	const mailboxId = normalizeEmail(decodeURIComponent(c.req.param("mailboxId")!));
 	const obj = await c.env.BUCKET.get(`mailboxes/${mailboxId}.json`);
 	if (!obj) return c.json({ error: "Not found" }, 404);
-	return c.json({ id: mailboxId, name: mailboxId, email: mailboxId, settings: await obj.json() });
+	const settings = (await obj.json()) as Record<string, unknown>;
+	const stub = c.env.MAILBOX.get(c.env.MAILBOX.idFromName(mailboxId));
+	const role = await resolveContextMailboxRole(
+		c.env,
+		c.var.accessEmail,
+		mailboxId,
+		stub,
+	);
+	if (role && roleHasPermission(role, "read")) {
+		return c.json({
+			id: mailboxId,
+			name: mailboxId,
+			email: mailboxId,
+			settings: toMailboxSettingsForRole(
+				settings,
+				role,
+				c.var.accessEmail,
+				mailboxId,
+			),
+		});
+	}
+	const config = await getDomainConfig(c.env);
+	if (c.var.accessEmail && isOrgMember(c.var.accessEmail, config)) {
+		return c.json({
+			id: mailboxId,
+			name: mailboxId,
+			email: mailboxId,
+			settings: toPublicMailboxSettings(settings),
+		});
+	}
+	return c.json({ error: "Forbidden" }, 403);
 });
 
 app.put("/api/v1/mailboxes/:mailboxId", async (c) => {
@@ -777,6 +843,12 @@ app.delete("/api/v1/mailboxes/:mailboxId/emails/:id", async (c: AppContext) => {
 });
 
 app.post("/api/v1/mailboxes/:mailboxId/emails/:id/move", async (c: AppContext) => {
+	try {
+		requirePermission(c, "delete");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	const emailId = c.req.param("id")!;
 	const { folderId } = (await c.req.json()) as { folderId: string };
 	const success = await c.var.mailboxStub.moveEmail(emailId, folderId);
@@ -801,6 +873,12 @@ app.get("/api/v1/mailboxes/:mailboxId/contacts/:emailAddress", async (c: AppCont
 
 app.patch("/api/v1/mailboxes/:mailboxId/contacts/:emailAddress", async (c: AppContext) => {
 	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
+	try {
 		const emailAddress = decodeURIComponent(c.req.param("emailAddress")!);
 		z.string().email().parse(emailAddress);
 		const patch = ContactProfilePatchBody.parse(await c.req.json());
@@ -821,6 +899,12 @@ app.get("/api/v1/mailboxes/:mailboxId/threads/:threadId/state", async (c: AppCon
 });
 
 app.patch("/api/v1/mailboxes/:mailboxId/threads/:threadId/state", async (c: AppContext) => {
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	try {
 		const threadId = c.req.param("threadId")!;
 		const patch = normalizeConversationStatePatch(await c.req.json());
@@ -843,6 +927,12 @@ app.get("/api/v1/mailboxes/:mailboxId/threads/:threadId/notes", async (c: AppCon
 });
 
 app.post("/api/v1/mailboxes/:mailboxId/threads/:threadId/notes", async (c: AppContext) => {
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	try {
 		const body = await c.req.json();
 		const noteBody = normalizeInternalNoteBody((body as { body?: unknown }).body);
@@ -973,6 +1063,12 @@ app.post("/api/v1/mailboxes/:mailboxId/threads/:threadId/read", async (c: AppCon
 });
 
 app.post("/api/v1/mailboxes/:mailboxId/threads/:threadId/move", async (c: AppContext) => {
+	try {
+		requirePermission(c, "delete");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	const threadId = c.req.param("threadId")!;
 	const { folderId } = (await c.req.json()) as { folderId: string };
 	const result = await (c.var.mailboxStub as any).moveThread(threadId, folderId);
@@ -1031,6 +1127,12 @@ app.post("/api/v1/mailboxes/:mailboxId/emails/:id/forward", (c) => {
 app.get("/api/v1/mailboxes/:mailboxId/folders", async (c: AppContext) => c.json(await c.var.mailboxStub.getFolders()));
 
 app.post("/api/v1/mailboxes/:mailboxId/folders", async (c: AppContext) => {
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	const { name } = (await c.req.json()) as { name: string };
 	const slug = slugify(name);
 	if (!slug) return c.json({ error: "Folder name must contain alphanumeric characters" }, 400);
@@ -1039,12 +1141,24 @@ app.post("/api/v1/mailboxes/:mailboxId/folders", async (c: AppContext) => {
 });
 
 app.put("/api/v1/mailboxes/:mailboxId/folders/:id", async (c: AppContext) => {
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	const { name } = (await c.req.json()) as { name: string };
 	const f = await c.var.mailboxStub.updateFolder(c.req.param("id")!, name);
 	return f ? c.json(f) : c.json({ error: "Folder not found" }, 404);
 });
 
 app.delete("/api/v1/mailboxes/:mailboxId/folders/:id", async (c: AppContext) => {
+	try {
+		requirePermission(c, "settings");
+	} catch (error) {
+		return handlePermissionError(c, error);
+	}
+
 	const ok = await c.var.mailboxStub.deleteFolder(c.req.param("id")!);
 	return ok ? c.body(null, 204) : c.json({ error: "Folder not found or cannot be deleted" }, 400);
 });

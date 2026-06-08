@@ -34,6 +34,12 @@ import {
 	toolDiscardDraft,
 } from "../lib/tools";
 import { Folders, FOLDER_TOOL_DESCRIPTION, MOVE_FOLDER_TOOL_DESCRIPTION } from "../../shared/folders";
+import { normalizeEmail } from "../lib/access";
+import type { MailboxPermission } from "../lib/permissions";
+import {
+	assertToolMailboxPermission,
+	readToolAccessEmail,
+} from "../lib/tool-authz";
 import type { Env } from "../types";
 
 // AI SDK v6 changed tool() overloads significantly. We define tools as plain
@@ -116,7 +122,33 @@ async function getSystemPrompt(env: Env, mailboxId: string): Promise<string> {
 	return DEFAULT_SYSTEM_PROMPT;
 }
 
-function createEmailTools(env: Env, mailboxId: string) {
+async function runWithToolPermission<T>(
+	env: Env,
+	mailboxId: string,
+	accessEmail: string,
+	permission: MailboxPermission,
+	enforceAuthz: boolean,
+	run: () => Promise<T>,
+): Promise<T | { error: string }> {
+	if (!enforceAuthz) return run();
+	try {
+		await assertToolMailboxPermission(env, accessEmail, mailboxId, permission);
+		return run();
+	} catch (error) {
+		return {
+			error: error instanceof Error ? error.message : "Forbidden",
+		};
+	}
+}
+
+function createEmailTools(
+	env: Env,
+	mailboxId: string,
+	options: { accessEmail?: string; enforceAuthz?: boolean } = {},
+) {
+	const accessEmail = normalizeEmail(options.accessEmail || "");
+	const enforceAuthz = options.enforceAuthz ?? true;
+
 	return {
 		list_emails: defineTool({
 			description:
@@ -136,7 +168,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 					.describe("Page number for pagination"),
 			}),
 			execute: async ({ folder, limit, page }): Promise<unknown> => {
-				return toolListEmails(env, mailboxId, { folder, limit, page });
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolListEmails(env, mailboxId, { folder, limit, page }),
+				);
 			},
 		}),
 
@@ -147,7 +186,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 				emailId: z.string().describe("The email ID to retrieve"),
 			}),
 			execute: async ({ emailId }): Promise<unknown> => {
-				return toolGetEmail(env, mailboxId, emailId);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolGetEmail(env, mailboxId, emailId),
+				);
 			},
 		}),
 
@@ -162,7 +208,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 					),
 			}),
 			execute: async ({ threadId }): Promise<unknown> => {
-				return toolGetThread(env, mailboxId, threadId);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolGetThread(env, mailboxId, threadId),
+				);
 			},
 		}),
 
@@ -173,7 +226,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 				emailAddress: z.string().email().describe("Contact email address"),
 			}),
 			execute: async ({ emailAddress }): Promise<unknown> => {
-				return toolGetContactProfile(env, mailboxId, emailAddress);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolGetContactProfile(env, mailboxId, emailAddress),
+				);
 			},
 		}),
 
@@ -184,7 +244,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 				threadId: z.string().describe("Thread ID to inspect"),
 			}),
 			execute: async ({ threadId }): Promise<unknown> => {
-				return toolGetConversationContext(env, mailboxId, threadId);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolGetConversationContext(env, mailboxId, threadId),
+				);
 			},
 		}),
 
@@ -196,11 +263,19 @@ function createEmailTools(env: Env, mailboxId: string) {
 				body: z.string().describe("Private note body"),
 			}),
 			execute: async ({ threadId, body }): Promise<unknown> => {
-				return toolCreateInternalNote(env, mailboxId, {
-					threadId,
-					authorEmail: mailboxId,
-					body,
-				});
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"settings",
+					enforceAuthz,
+					() =>
+						toolCreateInternalNote(env, mailboxId, {
+							threadId,
+							authorEmail: mailboxId,
+							body,
+						}),
+				);
 			},
 		}),
 
@@ -216,7 +291,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 				last_seen_at: z.string().nullable().optional(),
 			}),
 			execute: async ({ threadId, ...patch }): Promise<unknown> => {
-				return toolUpdateConversationState(env, mailboxId, { threadId, patch });
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"settings",
+					enforceAuthz,
+					() => toolUpdateConversationState(env, mailboxId, { threadId, patch }),
+				);
 			},
 		}),
 
@@ -235,7 +317,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 					.describe("Optional folder to restrict search to"),
 			}),
 			execute: async ({ query, folder }): Promise<unknown> => {
-				return toolSearchEmails(env, mailboxId, { query, folder });
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolSearchEmails(env, mailboxId, { query, folder }),
+				);
 			},
 		}),
 
@@ -254,12 +343,20 @@ function createEmailTools(env: Env, mailboxId: string) {
 					),
 			}),
 			execute: async ({ to, subject, body }): Promise<unknown> => {
-				return toolDraftEmail(env, mailboxId, {
-					to,
-					subject,
-					body,
-					isPlainText: true,
-				});
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"send",
+					enforceAuthz,
+					() =>
+						toolDraftEmail(env, mailboxId, {
+							to,
+							subject,
+							body,
+							isPlainText: true,
+						}),
+				);
 			},
 		}),
 
@@ -281,14 +378,22 @@ function createEmailTools(env: Env, mailboxId: string) {
 					),
 			}),
 			execute: async ({ originalEmailId, to, subject, body }): Promise<unknown> => {
-				return toolDraftReply(env, mailboxId, {
-					originalEmailId,
-					to,
-					subject,
-					body,
-					isPlainText: true,
-					runVerifyDraft: true,
-				});
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"send",
+					enforceAuthz,
+					() =>
+						toolDraftReply(env, mailboxId, {
+							originalEmailId,
+							to,
+							subject,
+							body,
+							isPlainText: true,
+							runVerifyDraft: true,
+						}),
+				);
 			},
 		}),
 
@@ -301,7 +406,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 					.describe("true to mark as read, false for unread"),
 			}),
 			execute: async ({ emailId, read }): Promise<unknown> => {
-				return toolMarkEmailRead(env, mailboxId, emailId, read);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"read",
+					enforceAuthz,
+					() => toolMarkEmailRead(env, mailboxId, emailId, read),
+				);
 			},
 		}),
 
@@ -315,7 +427,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 					.describe(MOVE_FOLDER_TOOL_DESCRIPTION),
 			}),
 			execute: async ({ emailId, folderId }): Promise<unknown> => {
-				return toolMoveEmail(env, mailboxId, emailId, folderId);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"delete",
+					enforceAuthz,
+					() => toolMoveEmail(env, mailboxId, emailId, folderId),
+				);
 			},
 		}),
 
@@ -326,7 +445,14 @@ function createEmailTools(env: Env, mailboxId: string) {
 				draftId: z.string().describe("The ID of the draft to delete"),
 			}),
 			execute: async ({ draftId }): Promise<unknown> => {
-				return toolDiscardDraft(env, mailboxId, draftId);
+				return runWithToolPermission(
+					env,
+					mailboxId,
+					accessEmail,
+					"delete",
+					enforceAuthz,
+					() => toolDiscardDraft(env, mailboxId, draftId),
+				);
 			},
 		}),
 	};
@@ -336,11 +462,24 @@ function createEmailTools(env: Env, mailboxId: string) {
 // SEND_EMAIL binding shape and the AIChatAgent constraint.  The actual env
 // is fully typed inside the tools via the closure.
 export class EmailAgent extends AIChatAgent<any> {
+	private toolAccessEmail = "";
+
+	async onConnect(
+		conn: Parameters<AIChatAgent<any>["onConnect"]>[0],
+		ctx: Parameters<AIChatAgent<any>["onConnect"]>[1],
+	) {
+		this.toolAccessEmail = readToolAccessEmail(ctx.request);
+		return super.onConnect(conn, ctx);
+	}
+
 	async onChatMessage(onFinish: any) {
 		const env = this.env as Env;
 		const mailboxId = this.name;
 		const workersai = createWorkersAI({ binding: env.AI });
-		const tools = createEmailTools(env, mailboxId);
+		const tools = createEmailTools(env, mailboxId, {
+			accessEmail: this.toolAccessEmail,
+			enforceAuthz: true,
+		});
 		const systemPrompt = await getSystemPrompt(env, mailboxId);
 
 		const result = streamText({
@@ -398,7 +537,9 @@ export class EmailAgent extends AIChatAgent<any> {
 	}) {
 		const env = this.env as Env;
 		const workersai = createWorkersAI({ binding: env.AI });
-		const tools = createEmailTools(env, emailData.mailboxId);
+		const tools = createEmailTools(env, emailData.mailboxId, {
+			enforceAuthz: false,
+		});
 		const systemPrompt = await getSystemPrompt(env, emailData.mailboxId);
 
 		// Pre-read the email and thread so the agent has full context

@@ -21,7 +21,6 @@ import {
 	getFullThread,
 	buildQuotedReplyBlock,
 	textToHtml,
-	listMailboxes,
 	generateMessageId,
 	buildReferencesChain,
 } from "./email-helpers";
@@ -32,6 +31,11 @@ import { normalizeInternalNoteBody } from "./internal-notes";
 import { getInternalOnlyDeliveryError, getRecipientRouting } from "./recipient-routing";
 import { Folders } from "../../shared/folders";
 import type { Env } from "../types";
+import {
+	assertToolMailboxPermission,
+	listToolAccessibleMailboxes,
+} from "./tool-authz";
+import type { MailboxPermission } from "./permissions";
 
 // ── Type casts for DO methods not on the base stub type ────────────
 type MailboxSearchStub = {
@@ -57,8 +61,24 @@ type MailboxSocialStub = {
 
 // ── list_mailboxes ─────────────────────────────────────────────────
 
-export async function toolListMailboxes(env: Env) {
-	return listMailboxes(env.BUCKET);
+export async function toolListMailboxes(env: Env, accessEmail: string) {
+	return listToolAccessibleMailboxes(env, accessEmail);
+}
+
+export async function toolAssertMailboxPermission(
+	env: Env,
+	accessEmail: string,
+	mailboxId: string,
+	permission: MailboxPermission,
+) {
+	try {
+		await assertToolMailboxPermission(env, accessEmail, mailboxId, permission);
+		return null;
+	} catch (error) {
+		return {
+			error: error instanceof Error ? error.message : "Forbidden",
+		};
+	}
 }
 
 // ── list_emails ────────────────────────────────────────────────────

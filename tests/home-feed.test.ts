@@ -4,14 +4,8 @@ import {
 	decodeFeedImageUpload,
 	MAX_FEED_IMAGE_BYTES,
 } from "../workers/lib/feed-images.ts";
+import { sanitizeRichHtml as sanitizeFeedHtml } from "../workers/lib/html-sanitize.ts";
 import { htmlToPlainText } from "../workers/lib/feed-text.ts";
-
-function sanitizeFeedHtml(html: string): string {
-	return html
-		.replace(/<script[\s\S]*?<\/script>/gi, "")
-		.replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-		.trim();
-}
 
 function isOrgMember(
 	accessEmail: string,
@@ -36,12 +30,13 @@ test("isOrgMember accepts configured team and admin emails", () => {
 	assert.equal(isOrgMember("outsider@vsbg.vn", config), false);
 });
 
-test("sanitizeFeedHtml strips script tags and inline handlers", () => {
+test("sanitizeFeedHtml strips script tags, inline handlers, and blocked tags", () => {
 	const sanitized = sanitizeFeedHtml(
-		'<p onclick="alert(1)">Hi</p><script>alert(1)</script>',
+		'<p onclick="alert(1)">Hi</p><script>alert(1)</script><svg onload="x"></svg>',
 	);
 	assert.equal(sanitized.includes("<script"), false);
 	assert.equal(sanitized.includes("onclick"), false);
+	assert.equal(sanitized.includes("<svg"), false);
 	assert.match(sanitized, /Hi/);
 });
 
