@@ -1,0 +1,86 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "vsbg-box",
+	"compatibility_date": "2025-11-28",
+	"main": "./workers/app.ts",
+	"routes": [
+		{
+			"pattern": "box.vsbg.vn",
+			"custom_domain": true
+		},
+		{
+			"pattern": "start.vsbg.vn",
+			"custom_domain": true
+		}
+	],
+	"observability": {
+		"enabled": true
+	},
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		// TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
+		// The worker now fails closed outside local development if Access is not configured.
+		"DOMAINS": "vsbg.vn",
+		"EMAIL_ADDRESSES": [
+			"admin@vsbg.vn",
+			"test@vsbg.vn"
+		],
+		"ACCESS_EMAIL_ADDRESSES": [
+			"ceo@bdsmetro.com"
+		]
+	},
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"remote": true
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "vsbg-box",
+			"preview_bucket_name": "vsbg-box"
+		}
+	],
+	"ai": {
+		"binding": "AI"
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MAILBOX",
+				"class_name": "MailboxDO"
+			},
+			{
+				"name": "EMAIL_AGENT",
+				"class_name": "EmailAgent"
+			},
+			{
+				"name": "EMAIL_MCP",
+				"class_name": "EmailMCP"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"MailboxDO"
+			]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": [
+				"EmailAgent"
+			]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": [
+				"EmailMCP"
+			]
+		}
+	]
+}

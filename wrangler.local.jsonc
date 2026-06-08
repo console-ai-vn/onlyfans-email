@@ -1,0 +1,68 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "vsbg-box-local",
+	"compatibility_date": "2025-11-28",
+	"main": "./workers/app.ts",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"DOMAINS": "vsbg.vn",
+		"EMAIL_ADDRESSES": [
+			"admin@vsbg.vn",
+			"test@vsbg.vn"
+		],
+		"ACCESS_EMAIL_ADDRESSES": [
+			"ceo@bdsmetro.com"
+		]
+	},
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"remote": false
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "vsbg-box-local",
+			"preview_bucket_name": "vsbg-box-local"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MAILBOX",
+				"class_name": "MailboxDO"
+			},
+			{
+				"name": "EMAIL_AGENT",
+				"class_name": "EmailAgent"
+			},
+			{
+				"name": "EMAIL_MCP",
+				"class_name": "EmailMCP"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"MailboxDO"
+			]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": [
+				"EmailAgent"
+			]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": [
+				"EmailMCP"
+			]
+		}
+	]
+}

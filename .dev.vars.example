@@ -1,0 +1,9 @@
+# Cloudflare Access (required in production via wrangler secret put).
+# Copy this file to .dev.vars for local development.
+POLICY_AUD=your-access-policy-audience-tag
+TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+
+# Production setup:
+#   wrangler secret put POLICY_AUD
+#   wrangler secret put TEAM_DOMAIN
+# Do not commit real values to wrangler.jsonc vars.
