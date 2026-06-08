@@ -2,7 +2,7 @@ import { Button, Tooltip } from "@cloudflare/kumo";
 import { TrashIcon } from "@phosphor-icons/react";
 import { useKumoToastManager } from "@cloudflare/kumo";
 import { formatListDate } from "shared/dates";
-import MailboxAvatar from "~/components/MailboxAvatar";
+import MemberProfileTrigger from "~/components/home/MemberProfileTrigger";
 import { useDeleteHomeComment } from "~/queries/home-feed";
 import api from "~/services/api";
 import type { HomeComment } from "~/types";
@@ -45,16 +45,20 @@ export default function CommentList({
 		<div className="space-y-4">
 			{comments.map((comment) => (
 				<div key={comment.id} className="flex gap-3">
-					<MailboxAvatar
+					<MemberProfileTrigger
 						email={comment.authorEmail}
-						name={comment.authorEmail.split("@")[0]}
-						size="sm"
+						avatarSize="sm"
+						showName={false}
+						layout="avatar-only"
 					/>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
-							<span className="text-sm font-medium text-kumo-default">
-								{comment.authorEmail.split("@")[0]}
-							</span>
+							<MemberProfileTrigger
+								email={comment.authorEmail}
+								showName
+								layout="name-only"
+								nameClassName="font-medium"
+							/>
 							<span className="text-xs text-kumo-subtle">
 								{formatListDate(comment.createdAt)}
 							</span>

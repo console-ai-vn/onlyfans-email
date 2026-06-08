@@ -12,6 +12,8 @@ export interface ComposeOptions {
 	originalEmail?: Email | null;
 	/** When editing a draft, this holds the draft email to pre-fill the composer */
 	draftEmail?: Email | null;
+	/** Prefill To field when starting a new message */
+	prefillTo?: string;
 }
 
 interface UIState {

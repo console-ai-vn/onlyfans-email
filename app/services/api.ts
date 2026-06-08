@@ -13,6 +13,7 @@ import type {
 	HomeCommentListResponse,
 	HomeTopic,
 	HomeTopicListResponse,
+	MemberProfile,
 	InternalNote,
 	Mailbox,
 } from "~/types";
@@ -343,6 +344,10 @@ const api = {
 	deleteHomeComment: (topicId: string, commentId: string) =>
 		del<{ topicId: string; commentId: string }>(
 			`/api/v1/home/topics/${encodeURIComponent(topicId)}/comments/${encodeURIComponent(commentId)}`,
+		),
+	getMemberProfile: (memberEmail: string) =>
+		get<MemberProfile>(
+			`/api/v1/mailboxes/${encodeURIComponent(memberEmail)}/profile`,
 		),
 	homeTopicImageUrl: (topicId: string, imageId: string) =>
 		`/api/v1/home/topics/${encodeURIComponent(topicId)}/images/${encodeURIComponent(imageId)}`,

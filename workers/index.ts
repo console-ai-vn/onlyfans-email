@@ -256,6 +256,33 @@ app.get("/api/v1/mailboxes/:mailboxId/cover", async (c) => {
 	return new Response(obj.body, { headers });
 });
 
+app.get("/api/v1/mailboxes/:mailboxId/profile", async (c) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	const access = await assertOrgMemberProfileAccess(
+		c.env,
+		c.var.accessEmail,
+		mailboxId,
+	);
+	if (!access.ok) return c.json({ error: access.error }, access.status);
+
+	const settingsKey = `mailboxes/${access.mailboxId}.json`;
+	const settingsObj = await c.env.BUCKET.get(settingsKey);
+	const settings = settingsObj
+		? ((await settingsObj.json()) as Record<string, unknown>)
+		: {};
+	const { toPublicMemberProfile } = await import("./lib/member-profile");
+	const [avatarHead, coverHead] = await Promise.all([
+		c.env.BUCKET.head(profileAvatarKey(access.mailboxId)),
+		c.env.BUCKET.head(profileCoverKey(access.mailboxId)),
+	]);
+	return c.json(
+		toPublicMemberProfile(access.mailboxId, settings, {
+			hasAvatar: avatarHead !== null,
+			hasCover: coverHead !== null,
+		}),
+	);
+});
+
 app.put("/api/v1/mailboxes/:mailboxId/avatar", requireMailbox, async (c: AppContext) => {
 	const mailboxId = c.req.param("mailboxId")!;
 	try {

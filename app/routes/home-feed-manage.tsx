@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import { useDeleteHomeTopic, useHomeTopics } from "~/queries/home-feed";
 import { queryKeys } from "~/queries/keys";
+import MemberProfileTrigger from "~/components/home/MemberProfileTrigger";
 import api from "~/services/api";
 
 export function meta() {
@@ -112,7 +113,13 @@ export default function HomeFeedManageRoute() {
 											{topic.title}
 										</Link>
 									</td>
-									<td className="px-4 py-3 text-kumo-subtle">{topic.authorEmail}</td>
+									<td className="px-4 py-3 text-kumo-subtle">
+										<MemberProfileTrigger
+											email={topic.authorEmail}
+											showName
+											layout="name-only"
+										/>
+									</td>
 									<td className="px-4 py-3 text-kumo-subtle">{topic.commentCount}</td>
 									<td className="px-4 py-3 text-kumo-subtle">
 										{formatListDate(topic.createdAt)}

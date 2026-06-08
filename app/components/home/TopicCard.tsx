@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router";
 import { formatListDate } from "shared/dates";
-import MailboxAvatar from "~/components/MailboxAvatar";
+import MemberProfileTrigger from "~/components/home/MemberProfileTrigger";
 import api from "~/services/api";
 import type { HomeTopic } from "~/types";
 import ReactionBar from "./ReactionBar";
@@ -14,16 +14,20 @@ export default function TopicCard({ topic }: { topic: HomeTopic }) {
 	return (
 		<article className="rounded-xl border border-kumo-line bg-kumo-base p-4 shadow-sm">
 			<div className="flex items-start gap-3">
-				<MailboxAvatar
+				<MemberProfileTrigger
 					email={topic.authorEmail}
-					name={topic.authorEmail.split("@")[0]}
-					size="md"
+					avatarSize="md"
+					showName={false}
+					layout="avatar-only"
 				/>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center justify-between gap-2">
-						<p className="text-sm font-semibold text-kumo-default truncate">
-							{topic.authorEmail.split("@")[0]}
-						</p>
+						<MemberProfileTrigger
+							email={topic.authorEmail}
+							showName
+							layout="name-only"
+							nameClassName="font-semibold"
+						/>
 						<span className="text-xs text-kumo-subtle shrink-0">
 							{formatListDate(topic.createdAt)}
 						</span>

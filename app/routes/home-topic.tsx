@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import CommentComposer from "~/components/home/CommentComposer";
 import CommentList from "~/components/home/CommentList";
 import ReactionBar from "~/components/home/ReactionBar";
-import MailboxAvatar from "~/components/MailboxAvatar";
+import MemberProfileTrigger from "~/components/home/MemberProfileTrigger";
 import {
 	useDeleteHomeTopic,
 	useHomeComments,
@@ -86,15 +86,19 @@ export default function HomeTopicRoute() {
 					</div>
 				)}
 				<div className="flex items-start gap-3">
-					<MailboxAvatar
+					<MemberProfileTrigger
 						email={topic.authorEmail}
-						name={topic.authorEmail.split("@")[0]}
-						size="md"
+						avatarSize="md"
+						showName={false}
+						layout="avatar-only"
 					/>
 					<div className="min-w-0 flex-1">
-						<p className="text-sm font-medium text-kumo-default">
-							{topic.authorEmail.split("@")[0]}
-						</p>
+						<MemberProfileTrigger
+							email={topic.authorEmail}
+							showName
+							layout="name-only"
+							nameClassName="font-medium"
+						/>
 						<p className="text-xs text-kumo-subtle">{formatListDate(topic.createdAt)}</p>
 						<h1 className="mt-2 text-xl font-semibold text-kumo-default">{topic.title}</h1>
 						<div
