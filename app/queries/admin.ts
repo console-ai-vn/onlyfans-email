@@ -57,3 +57,28 @@ export function useRevokeMailboxPermission(mailboxId: string | undefined) {
 		},
 	});
 }
+
+export function useSignupRequests(options?: { enabled?: boolean }) {
+	return useQuery({
+		queryKey: queryKeys.admin.signupRequests,
+		queryFn: async () => {
+			const data = await api.listSignupRequests();
+			return data.requests;
+		},
+		enabled: options?.enabled ?? true,
+	});
+}
+
+export function useApproveSignupRequest() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (payload: { requestId: string; adminNote?: string }) =>
+			api.approveSignupRequest(payload.requestId, payload.adminNote),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: queryKeys.admin.signupRequests });
+			queryClient.invalidateQueries({ queryKey: queryKeys.admin.domains });
+			queryClient.invalidateQueries({ queryKey: queryKeys.config });
+			queryClient.invalidateQueries({ queryKey: queryKeys.mailboxes.all });
+		},
+	});
+}

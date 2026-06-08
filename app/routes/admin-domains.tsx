@@ -9,7 +9,7 @@ import {
 } from "@cloudflare/kumo";
 import { GlobeIcon, UsersIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
 	useDomainConfig,
@@ -126,11 +126,18 @@ export default function AdminDomainsRoute() {
 
 	return (
 		<div className="max-w-3xl px-4 py-8 md:px-8 space-y-8">
-			<div>
-				<h1 className="text-xl font-semibold text-kumo-default">Admin</h1>
-				<p className="text-sm text-kumo-subtle mt-1">
-					Manage domains and mailbox permissions without redeploying.
-				</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<h1 className="text-xl font-semibold text-kumo-default">Admin</h1>
+					<p className="text-sm text-kumo-subtle mt-1">
+						Manage domains and mailbox permissions without redeploying.
+					</p>
+				</div>
+				<Link to={`/mailbox/${mailboxId}/admin/signups`}>
+					<Button variant="secondary" size="sm">
+						Signup queue
+					</Button>
+				</Link>
 			</div>
 
 			<section className="rounded-xl border border-kumo-line bg-kumo-base p-5 space-y-4">

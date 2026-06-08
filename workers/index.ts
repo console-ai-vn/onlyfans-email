@@ -75,6 +75,10 @@ import {
 } from "./lib/public-mailbox-profile";
 import { roleHasPermission } from "./lib/permissions";
 import { assertSignupRateLimit } from "./lib/signup-rate-limit";
+import {
+	approveSignupRequest,
+	listSignupRequests,
+} from "./lib/signup-requests";
 import { resolveContextMailboxRole } from "./lib/mailbox";
 import { homeApp } from "./routes/home-feed";
 
@@ -90,6 +94,10 @@ const DomainConfigBody = z.object({
 const PermissionGrantBody = z.object({
 	userEmail: z.string().email(),
 	role: z.enum(["manager", "member", "viewer"]),
+});
+
+const SignupApproveBody = z.object({
+	adminNote: z.string().trim().max(500).optional().default(""),
 });
 
 // -- Request body schemas (kept for validation) ---------------------
@@ -404,6 +412,45 @@ app.put("/api/v1/admin/domains", async (c) => {
 			return c.json({ error: error.issues[0]?.message || "Invalid domain config" }, 400);
 		}
 		return c.json({ error: error instanceof Error ? error.message : "Forbidden" }, 403);
+	}
+});
+
+app.get("/api/v1/admin/signup-requests", async (c) => {
+	try {
+		const config = await getDomainConfig(c.env);
+		assertAdminAccess(c.var.accessEmail, config.accessEmailAddresses);
+		const requests = await listSignupRequests(c.env);
+		return c.json({ requests });
+	} catch (error) {
+		return c.json({ error: error instanceof Error ? error.message : "Forbidden" }, 403);
+	}
+});
+
+app.post("/api/v1/admin/signup-requests/:requestId/approve", async (c) => {
+	try {
+		const config = await getDomainConfig(c.env);
+		assertAdminAccess(c.var.accessEmail, config.accessEmailAddresses);
+		let payload: unknown = {};
+		try {
+			payload = await c.req.json();
+		} catch {
+			payload = {};
+		}
+		const body = SignupApproveBody.parse(payload);
+		const result = await approveSignupRequest(
+			c.env,
+			c.req.param("requestId")!,
+			c.var.accessEmail,
+			body.adminNote,
+		);
+		return c.json(result);
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return c.json({ error: error.issues[0]?.message || "Invalid approve payload" }, 400);
+		}
+		const message = error instanceof Error ? error.message : "Forbidden";
+		const status = message === "Signup request not found" ? 404 : message.includes("already") ? 409 : 403;
+		return c.json({ error: message }, status);
 	}
 });
 

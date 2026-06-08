@@ -288,6 +288,41 @@ const api = {
 		emailAddresses: string[];
 		accessEmailAddresses: string[];
 	}>("/api/v1/admin/domains", config),
+	listSignupRequests: () =>
+		get<{
+			requests: Array<{
+				id: string;
+				status: "pending" | "approved" | "rejected";
+				createdAt: string;
+				displayName: string;
+				personalEmail: string;
+				desiredMailbox: string;
+				note: string;
+				approvedAt?: string;
+				approvedBy?: string;
+				adminNote?: string;
+			}>;
+		}>("/api/v1/admin/signup-requests"),
+	approveSignupRequest: (requestId: string, adminNote?: string) =>
+		post<{
+			request: {
+				id: string;
+				status: "pending" | "approved" | "rejected";
+				createdAt: string;
+				displayName: string;
+				personalEmail: string;
+				desiredMailbox: string;
+				note: string;
+				approvedAt?: string;
+				approvedBy?: string;
+				adminNote?: string;
+			};
+			mailboxCreated: boolean;
+			permissionGranted: boolean;
+			accessReminder: string;
+		}>(`/api/v1/admin/signup-requests/${encodeURIComponent(requestId)}/approve`, {
+			adminNote: adminNote ?? "",
+		}),
 	listMailboxPermissions: (mailboxId: string) =>
 		get<Array<{
 			user_email: string;

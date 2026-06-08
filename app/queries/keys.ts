@@ -47,6 +47,7 @@ export const queryKeys = {
 	},
 	admin: {
 		domains: ["admin", "domains"] as const,
+		signupRequests: ["admin", "signup-requests"] as const,
 		permissions: (mailboxId: string) => ["admin", "permissions", mailboxId] as const,
 	},
 };

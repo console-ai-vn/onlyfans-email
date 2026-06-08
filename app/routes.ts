@@ -25,6 +25,7 @@ export default [
 		route("settings", "routes/settings.tsx"),
 		route("audit", "routes/audit.tsx"),
 		route("admin/domains", "routes/admin-domains.tsx"),
+		route("admin/signups", "routes/admin-signup-queue.tsx"),
 		route("search", "routes/search-results.tsx"),
 	]),
 	route("*", "routes/not-found.tsx"),

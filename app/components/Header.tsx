@@ -7,6 +7,7 @@ import {
 	ClipboardTextIcon,
 	GlobeIcon,
 	ListIcon,
+	UserPlusIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
 	SunIcon,
@@ -74,6 +75,7 @@ export default function Header() {
 	const isSettingsActive = location.pathname.includes("/settings");
 	const isAuditActive = location.pathname.includes("/audit");
 	const isAdminDomainsActive = location.pathname.includes("/admin/domains");
+	const isAdminSignupsActive = location.pathname.includes("/admin/signups");
 
 	return (
 		<header className="flex items-center gap-2 px-3 py-2.5 bg-kumo-base border-b border-kumo-line sticky top-0 z-10 md:px-5 md:gap-4">
@@ -150,6 +152,21 @@ export default function Header() {
 				</Tooltip>
 				{config?.isAdmin && (
 					<>
+						<Tooltip content="Signup queue" side="bottom" asChild>
+							<Button
+								variant={isAdminSignupsActive ? "secondary" : "ghost"}
+								shape="square"
+								icon={<UserPlusIcon size={20} />}
+								onClick={() =>
+									navigate(
+										isAdminSignupsActive
+											? `/mailbox/${mailboxId}/emails/inbox`
+											: `/mailbox/${mailboxId}/admin/signups`,
+									)
+								}
+								aria-label="Signup queue"
+							/>
+						</Tooltip>
 						<Tooltip content="Domain admin" side="bottom" asChild>
 							<Button
 								variant={isAdminDomainsActive ? "secondary" : "ghost"}
