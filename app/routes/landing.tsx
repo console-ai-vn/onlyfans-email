@@ -5,7 +5,7 @@ export function meta() {
 		{ title: "VSBG Box - Internal Social Mail" },
 		{
 			name: "description",
-			content: "Private internal mailboxes with personal-email OTP access.",
+			content: "Internal mailboxes @vsbg.vn — login bằng mailbox nội bộ, không dùng email cá nhân.",
 		},
 	];
 }
@@ -87,14 +87,14 @@ export default function LandingRoute() {
 				<section className="grid flex-1 items-center gap-12 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:py-10">
 					<div className="max-w-3xl">
 						<div className="mb-6 inline-flex rounded-full border border-white/12 bg-white/7 px-4 py-2 text-sm text-white/70 backdrop-blur">
-							OTP về email cá nhân. Mail nội bộ chỉ chạy trong team.
+							Login bằng mailbox @vsbg.vn. Email cá nhân chỉ nhận thông báo lần đầu.
 						</div>
 						<h1 className="text-5xl font-semibold leading-[0.98] tracking-[-0.06em] text-white md:text-7xl">
 							Một mạng xã hội nhỏ nằm trong email nội bộ.
 						</h1>
 						<p className="mt-6 max-w-2xl text-lg leading-8 text-white/65 md:text-xl">
-							Mỗi người có một mailbox dạng <strong className="text-white">nomad@vsbg.vn</strong>,
-							đăng nhập bằng OTP gửi về email cá nhân đã được cấp quyền. Tin nhắn, ảnh và feed chỉ lưu trong hệ thống nội bộ.
+							Mỗi người có mailbox <strong className="text-white">nomad@vsbg.vn</strong> và
+							<strong className="text-white"> đăng nhập bằng chính địa chỉ đó</strong>. Email cá nhân chỉ để nhận thông báo kích hoạt lần đầu; sau đó OTP vào mailbox nội bộ.
 						</p>
 						<div className="mt-8 flex flex-col gap-3 sm:flex-row">
 							<a
@@ -114,7 +114,7 @@ export default function LandingRoute() {
 							{[
 								["Internal only", "Chặn gửi ra ngoài"],
 								["Image ready", "Ảnh và file preview"],
-								["Access OTP", "Login bằng email cá nhân"],
+								["Access OTP", "Login bằng @vsbg.vn"],
 							].map(([title, text]) => (
 								<div key={title} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
 									<div className="text-sm font-semibold text-white">{title}</div>
@@ -168,14 +168,14 @@ export default function LandingRoute() {
 						<div className="p-2">
 							<h2 className="text-3xl font-semibold tracking-[-0.04em]">Đăng ký user nội bộ</h2>
 							<p className="mt-4 text-sm leading-7 text-white/60">
-								Form này tạo yêu cầu cấp user. Admin sẽ cấp mailbox nội bộ và allow email cá nhân đó trong Cloudflare Access để nhận OTP.
+								Form này tạo yêu cầu cấp user. Admin duyệt sẽ cấp mailbox @vsbg.vn và quyền login Access — email cá nhân chỉ nhận thông báo kích hoạt một lần.
 							</p>
 							<div className="mt-6 rounded-3xl bg-black/20 p-4 text-sm text-white/65">
 								<div className="font-semibold text-white">Flow chuẩn:</div>
 								<ol className="mt-3 list-decimal space-y-2 pl-5">
 									<li>Chọn mailbox: nomad@vsbg.vn.</li>
-									<li>Khai báo email cá nhân nhận OTP.</li>
-									<li>Admin duyệt rồi user đăng nhập qua Cloudflare Access.</li>
+									<li>Khai báo email cá nhân nhận thông báo kích hoạt.</li>
+									<li>Admin duyệt → user login bằng mailbox @vsbg.vn tại box.vsbg.vn.</li>
 								</ol>
 							</div>
 						</div>
@@ -186,7 +186,7 @@ export default function LandingRoute() {
 									<input required value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Nguyễn Thái Hiếu" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#4f7cff] focus:ring-4 focus:ring-blue-100" />
 								</label>
 								<label className="block">
-									<span className="text-sm font-semibold text-slate-700">Email cá nhân nhận OTP</span>
+									<span className="text-sm font-semibold text-slate-700">Email cá nhân nhận thông báo</span>
 									<input required type="email" value={personalEmail} onChange={(e) => setPersonalEmail(e.target.value)} placeholder="you@gmail.com" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#4f7cff] focus:ring-4 focus:ring-blue-100" />
 								</label>
 							</div>
@@ -203,7 +203,7 @@ export default function LandingRoute() {
 								<textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Role, team, lý do cấp quyền..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#4f7cff] focus:ring-4 focus:ring-blue-100" />
 							</label>
 							{status === "success" && (
-								<div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">Đã ghi nhận yêu cầu. Admin sẽ cấp quyền Access OTP sau.</div>
+								<div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">Đã ghi nhận. Admin duyệt xong bạn sẽ nhận email — login box bằng mailbox @vsbg.vn.</div>
 							)}
 							{status === "error" && (
 								<div className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>

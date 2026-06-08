@@ -53,11 +53,19 @@ export default function AdminSignupQueueRoute() {
 		try {
 			const result = await approveRequest.mutateAsync(requestId);
 			const detail = result.fullyAutomated
-				? "Mailbox + quyền + OTP allowlist xong. User login được luôn."
-				: result.accessOtpError ||
-					"Mailbox đã tạo. Kiểm tra OTP automation config.";
+				? "Mailbox + Access login + email hướng dẫn đã gửi."
+				: [
+						result.accessOtpError,
+						result.notificationError,
+						!result.accessOtpAdded && !result.accessOtpSkipped
+							? "Access allowlist chưa cập nhật"
+							: undefined,
+						!result.notificationSent ? "Chưa gửi email thông báo" : undefined,
+					]
+						.filter(Boolean)
+						.join(" · ") || "Mailbox đã tạo — kiểm tra automation";
 			toast.add({
-				title: result.fullyAutomated ? "Duyệt xong — full auto" : "Duyệt xong — cần check OTP",
+				title: result.fullyAutomated ? "Duyệt xong — full auto" : "Duyệt xong — cần check",
 				description: detail,
 				variant: result.fullyAutomated ? undefined : "error",
 			});
@@ -181,7 +189,7 @@ export default function AdminSignupQueueRoute() {
 									</div>
 									<div className="rounded-lg bg-kumo-recessed px-3 py-2">
 										<dt className="text-xs uppercase tracking-wide text-kumo-subtle">
-											OTP email
+											Email nhận thông báo
 										</dt>
 										<dd className="mt-1 font-semibold text-kumo-default">
 											{entry.personalEmail}

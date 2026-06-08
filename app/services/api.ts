@@ -337,6 +337,8 @@ const api = {
 			accessOtpAdded: boolean;
 			accessOtpSkipped: boolean;
 			accessOtpError?: string;
+			notificationSent: boolean;
+			notificationError?: string;
 			fullyAutomated: boolean;
 		}>(`/api/v1/admin/signup-requests/${encodeURIComponent(requestId)}/approve`, {}),
 	rejectSignupRequest: (requestId: string) =>

@@ -26,15 +26,11 @@ test("defaultMailboxSettings uses display name for fromName", () => {
 	assert.equal(settings.forwarding.enabled, false);
 });
 
-test("buildApprovalNote records automation outcome", () => {
-	const note = buildApprovalNote(
-		"ceo@bdsmetro.com",
-		"nomad@vsbg.vn",
-		"user@gmail.com",
-		true,
-	);
-	assert.match(note, /nomad@vsbg.vn/);
-	assert.match(note, /OTP allowlist updated automatically/);
+test("buildApprovalNote records mailbox access automation", () => {
+	const note = buildApprovalNote("ceo@bdsmetro.com", "nomad@vsbg.vn", true, true);
+	assert.match(note, /Login nomad@vsbg.vn/);
+	assert.match(note, /Access allowlist updated for mailbox login/);
+	assert.match(note, /welcome email sent/);
 });
 
 test("buildRejectionNote records actor", () => {

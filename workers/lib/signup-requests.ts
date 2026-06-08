@@ -6,6 +6,7 @@ import {
 } from "./cloudflare-zero-trust-list";
 import { seedMailboxTeamAccess } from "./board-access";
 import { getMailboxStub } from "./email-helpers";
+import { sendSignupApprovalNotification } from "./signup-approval-notify";
 import {
 	buildApprovalNote,
 	buildRejectionNote,
@@ -56,6 +57,8 @@ export interface ApproveSignupResult {
 	accessOtpAdded: boolean;
 	accessOtpSkipped: boolean;
 	accessOtpError?: string;
+	notificationSent: boolean;
+	notificationError?: string;
 	fullyAutomated: boolean;
 }
 
@@ -225,8 +228,8 @@ export async function approveSignupRequest(
 	if (automation) {
 		const otpResult = await appendEmailToZeroTrustList(
 			automation,
-			personalEmail,
-			`VSBG Box signup ${request.desiredMailbox}`,
+			mailboxEmail,
+			`VSBG Box login ${mailboxEmail}`,
 		);
 		accessOtpAdded = otpResult.added;
 		accessOtpSkipped = otpResult.skipped;
@@ -234,6 +237,8 @@ export async function approveSignupRequest(
 	} else {
 		accessOtpError = "Cloudflare OTP automation is not configured";
 	}
+
+	const notification = await sendSignupApprovalNotification(env, request);
 
 	const approvedAt = new Date().toISOString();
 	const actor = normalizeEmail(actorEmail);
@@ -245,8 +250,8 @@ export async function approveSignupRequest(
 		adminNote: buildApprovalNote(
 			actor,
 			mailboxEmail,
-			personalEmail,
 			accessOtpAdded || accessOtpSkipped,
+			notification.sent,
 		),
 	};
 	await saveSignupRequest(env, updated);
@@ -258,7 +263,12 @@ export async function approveSignupRequest(
 		accessOtpAdded,
 		accessOtpSkipped,
 		accessOtpError,
-		fullyAutomated: (accessOtpAdded || accessOtpSkipped) && !accessOtpError,
+		notificationSent: notification.sent,
+		notificationError: notification.error,
+		fullyAutomated:
+			(accessOtpAdded || accessOtpSkipped) &&
+			!accessOtpError &&
+			notification.sent,
 	};
 }
 

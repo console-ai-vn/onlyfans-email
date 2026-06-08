@@ -25,13 +25,16 @@ export function defaultMailboxSettings(displayName: string) {
 export function buildApprovalNote(
 	actorEmail: string,
 	mailboxEmail: string,
-	personalEmail: string,
 	accessOtpAdded: boolean,
+	notificationSent: boolean,
 ) {
 	const otpStatus = accessOtpAdded
-		? "OTP allowlist updated automatically"
-		: "OTP allowlist not updated automatically";
-	return `Approved by ${normalizeSignupEmail(actorEmail)}. Mailbox ${normalizeSignupEmail(mailboxEmail)}. OTP ${normalizeSignupEmail(personalEmail)}. ${otpStatus}.`;
+		? "Access allowlist updated for mailbox login"
+		: "Access allowlist not updated";
+	const notifyStatus = notificationSent
+		? "welcome email sent to personal contact"
+		: "welcome email not sent";
+	return `Approved by ${normalizeSignupEmail(actorEmail)}. Login ${normalizeSignupEmail(mailboxEmail)}. ${otpStatus}. ${notifyStatus}.`;
 }
 
 export function buildRejectionNote(actorEmail: string) {
