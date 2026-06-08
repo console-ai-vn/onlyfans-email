@@ -1,12 +1,9 @@
 import { Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import {
 	BriefcaseIcon,
-	BuildingsIcon,
 	CameraIcon,
 	FloppyDiskIcon,
-	LinkIcon,
 	MapPinIcon,
-	PhoneIcon,
 } from "@phosphor-icons/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
@@ -72,12 +69,9 @@ export default function SettingsRoute() {
 	const coverInputRef = useRef<HTMLInputElement>(null);
 
 	const [displayName, setDisplayName] = useState("");
-	const [jobTitle, setJobTitle] = useState("");
-	const [department, setDepartment] = useState("");
-	const [phone, setPhone] = useState("");
+	const [role, setRole] = useState("");
 	const [bio, setBio] = useState("");
 	const [location, setLocation] = useState("");
-	const [website, setWebsite] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [avatarVersion, setAvatarVersion] = useState<string | null>(null);
 	const [coverVersion, setCoverVersion] = useState<string | null>(null);
@@ -88,12 +82,9 @@ export default function SettingsRoute() {
 		const settings = mailbox.settings;
 
 		setDisplayName(settings?.fromName?.trim() || defaults.fromName);
-		setJobTitle(settings?.jobTitle?.trim() || "");
-		setDepartment(settings?.department?.trim() || defaults.department);
-		setPhone(settings?.phone?.trim() || "");
+		setRole(settings?.jobTitle?.trim() || "");
 		setBio(settings?.bio?.trim() || "");
 		setLocation(settings?.location?.trim() || defaults.location);
-		setWebsite(settings?.website?.trim() || defaults.website);
 		setAvatarVersion(settings?.avatarUpdatedAt ?? null);
 		setCoverVersion(settings?.coverUpdatedAt ?? null);
 	}, [mailbox]);
@@ -105,12 +96,9 @@ export default function SettingsRoute() {
 		const settings: MailboxSettings = {
 			...mailbox.settings,
 			fromName: displayName.trim() || mailbox.name,
-			jobTitle: jobTitle.trim() || undefined,
-			department: department.trim() || undefined,
-			phone: phone.trim() || undefined,
+			jobTitle: role.trim() || undefined,
 			bio: bio.trim() || undefined,
 			location: location.trim() || undefined,
-			website: website.trim() || undefined,
 		};
 
 		try {
@@ -236,37 +224,18 @@ export default function SettingsRoute() {
 							{displayName || mailbox.email.split("@")[0]}
 						</h1>
 						<p className="text-sm text-kumo-subtle">{mailbox.email}</p>
-						{(jobTitle || department) && (
-							<p className="mt-1 text-sm text-kumo-default">
-								{[jobTitle, department].filter(Boolean).join(" · ")}
-							</p>
-						)}
+						{role && <p className="mt-1 text-sm text-kumo-default">{role}</p>}
 
 						<div className="mt-5 grid gap-4 sm:grid-cols-2">
 							<SettingsPreviewRow
 								icon={<BriefcaseIcon size={16} />}
 								label="Role"
-								value={jobTitle}
-							/>
-							<SettingsPreviewRow
-								icon={<BuildingsIcon size={16} />}
-								label="Team"
-								value={department}
+								value={role}
 							/>
 							<SettingsPreviewRow
 								icon={<MapPinIcon size={16} />}
 								label="Location"
 								value={location}
-							/>
-							<SettingsPreviewRow
-								icon={<PhoneIcon size={16} />}
-								label="Phone"
-								value={phone}
-							/>
-							<SettingsPreviewRow
-								icon={<LinkIcon size={16} />}
-								label="Website"
-								value={website}
 							/>
 						</div>
 
@@ -298,16 +267,10 @@ export default function SettingsRoute() {
 							placeholder="How you appear when sending mail"
 						/>
 						<Input
-							label="Role / job title"
-							value={jobTitle}
-							onChange={(e) => setJobTitle(e.target.value)}
+							label="Role"
+							value={role}
+							onChange={(e) => setRole(e.target.value)}
 							placeholder="Marketing Lead"
-						/>
-						<Input
-							label="Team / department"
-							value={department}
-							onChange={(e) => setDepartment(e.target.value)}
-							placeholder="Marketing"
 						/>
 						<label className="block space-y-1.5">
 							<span className="text-sm font-medium text-kumo-default">Bio</span>
@@ -315,7 +278,7 @@ export default function SettingsRoute() {
 								className="min-h-24 w-full resize-y rounded-lg border border-kumo-line bg-kumo-recessed px-3 py-2 text-sm text-kumo-default placeholder:text-kumo-subtle focus:outline-none focus:ring-1 focus:ring-kumo-ring"
 								value={bio}
 								onChange={(e) => setBio(e.target.value)}
-								placeholder="Short intro — role, team, what you do"
+								placeholder="Short intro — what you do"
 							/>
 						</label>
 						<Input
@@ -323,18 +286,6 @@ export default function SettingsRoute() {
 							value={location}
 							onChange={(e) => setLocation(e.target.value)}
 							placeholder="Ho Chi Minh City"
-						/>
-						<Input
-							label="Phone"
-							value={phone}
-							onChange={(e) => setPhone(e.target.value)}
-							placeholder="+84 ..."
-						/>
-						<Input
-							label="Website"
-							value={website}
-							onChange={(e) => setWebsite(e.target.value)}
-							placeholder="vsbg.vn"
 						/>
 						<Input label="Email" type="email" value={mailbox.email} disabled />
 					</section>

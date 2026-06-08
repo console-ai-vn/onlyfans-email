@@ -1,11 +1,7 @@
 import { Button, Loader } from "@cloudflare/kumo";
 import {
-	BriefcaseIcon,
-	BuildingsIcon,
 	EnvelopeSimpleIcon,
-	GlobeIcon,
 	MapPinIcon,
-	PhoneIcon,
 	PaperPlaneTiltIcon,
 	XIcon,
 } from "@phosphor-icons/react";
@@ -56,15 +52,6 @@ function findMailboxByEmail(mailboxes: Mailbox[] | undefined, email: string) {
 			mailbox.email.toLowerCase() === normalized ||
 			mailbox.id.toLowerCase() === normalized,
 	);
-}
-
-function formatWebsite(url: string) {
-	try {
-		const parsed = new URL(url.includes("://") ? url : `https://${url}`);
-		return parsed.hostname.replace(/^www\./, "");
-	} catch {
-		return url;
-	}
 }
 
 export default function MemberProfileSheet({
@@ -155,12 +142,8 @@ export default function MemberProfileSheet({
 							<h2 className="text-lg font-semibold text-kumo-default">
 								{mailboxDisplayName(mailbox)}
 							</h2>
-							{(settings?.jobTitle || settings?.department) && (
-								<p className="mt-1 text-sm text-kumo-subtle">
-									{[settings?.jobTitle, settings?.department]
-										.filter(Boolean)
-										.join(" · ")}
-								</p>
+							{settings?.jobTitle && (
+								<p className="mt-1 text-sm text-kumo-subtle">{settings.jobTitle}</p>
 							)}
 							<a
 								href={`mailto:${mailbox.email}`}
@@ -192,50 +175,10 @@ export default function MemberProfileSheet({
 							)}
 
 							<div className="mt-4 space-y-2 text-sm text-kumo-subtle">
-								{settings?.jobTitle && (
-									<div className="flex items-center gap-2">
-										<BriefcaseIcon size={16} className="shrink-0" />
-										<span>{settings.jobTitle}</span>
-									</div>
-								)}
-								{settings?.department && (
-									<div className="flex items-center gap-2">
-										<BuildingsIcon size={16} className="shrink-0" />
-										<span>{settings.department}</span>
-									</div>
-								)}
 								{settings?.location && (
 									<div className="flex items-center gap-2">
 										<MapPinIcon size={16} className="shrink-0" />
 										<span>{settings.location}</span>
-									</div>
-								)}
-								{settings?.phone && (
-									<div className="flex items-center gap-2">
-										<PhoneIcon size={16} className="shrink-0" />
-										<a
-											href={`tel:${settings.phone.replace(/\s+/g, "")}`}
-											className="text-kumo-link hover:underline"
-										>
-											{settings.phone}
-										</a>
-									</div>
-								)}
-								{settings?.website && (
-									<div className="flex items-center gap-2">
-										<GlobeIcon size={16} className="shrink-0" />
-										<a
-											href={
-												settings.website.includes("://")
-													? settings.website
-													: `https://${settings.website}`
-											}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="text-kumo-link hover:underline"
-										>
-											{formatWebsite(settings.website)}
-										</a>
 									</div>
 								)}
 							</div>
