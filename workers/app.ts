@@ -10,6 +10,7 @@ import { app as apiApp, receiveEmail } from "./index";
 import { app as mediaApp } from "./routes/media";
 import { app as liveApp } from "./routes/live";
 import { app as gateApp } from "./routes/gate";
+import { app as feedApp } from "./routes/feed";
 import { app as creatorApp } from "./routes/creator";
 import { app as dmApp } from "./routes/dm";
 import { app as earningsApp } from "./routes/earnings";
@@ -187,6 +188,9 @@ app.route("/", liveApp);
 
 // Mount content gate routes (PPV, signed URLs)
 app.route("/", gateApp);
+
+// Mount feed routes (mobile feed + stories)
+app.route("/", feedApp);
 
 // Phase 08: Public creator profile routes (no auth required)
 app.route("/", creatorApp);

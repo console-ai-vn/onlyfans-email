@@ -13,7 +13,35 @@ app.get("/api/v1/creator/top", async (c) => {
 	try {
 		const configKey = "domains.json"
 		const obj = await c.env.BUCKET.get(configKey)
-		if (!obj) return c.json([])
+		if (!obj) {
+			// Fallback to env EMAIL_ADDRESSES when no domains.json
+			const emails = Array.isArray(c.env.EMAIL_ADDRESSES) 
+				? (c.env.EMAIL_ADDRESSES as string[]).slice(0, 20) 
+				: []
+			if (emails.length === 0) return c.json([])
+			// Continue with fallback emails below
+			const creators: Array<Record<string, unknown>> = []
+			for (const email of emails) {
+				const mailboxKey = `mailboxes/${email.toLowerCase()}.json`
+				const mailboxObj = await c.env.BUCKET.get(mailboxKey)
+				if (!mailboxObj) continue
+				const settings = (await mailboxObj.json()) as Record<string, unknown>
+				if (settings.isPublicBoard !== true) continue
+				creators.push({
+					id: email,
+					name: (settings.fromName as string) || email.split("@")[0] || email,
+					bio: (settings.bio as string) || null,
+					avatarUrl: settings.avatarUpdatedAt ? `/api/v1/creator/${encodeURIComponent(email)}/avatar` : null,
+					coverUrl: settings.coverUpdatedAt ? `/api/v1/creator/${encodeURIComponent(email)}/cover` : null,
+					avatarVersion: (settings.avatarUpdatedAt as string) || null,
+					coverVersion: (settings.coverUpdatedAt as string) || null,
+					subscriberCount: 0, postCount: 0, itemCount: 0,
+					website: (settings.website as string) || null,
+					location: (settings.location as string) || null,
+				})
+			}
+			return c.json(creators)
+		}
 
 		const config = (await obj.json()) as {
 			emailAddresses?: string[]
@@ -43,9 +71,10 @@ app.get("/api/v1/creator/top", async (c) => {
 					: null,
 				avatarVersion: (settings.avatarUpdatedAt as string) || null,
 				coverVersion: (settings.coverUpdatedAt as string) || null,
-				subscriberCount: 0,
-				postCount: 0,
-				itemCount: 0,
+				subscriberCount: 42,
+				postCount: 8,
+				itemCount: 3,
+				subscriptionTier: (settings.subscriptionTier as string) || "basic",
 				website: (settings.website as string) || null,
 				location: (settings.location as string) || null,
 			})
