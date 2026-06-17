@@ -407,7 +407,7 @@ export default function LandingRoute() {
 			</section>
 
 			{/* ==================== CREATOR SHOWCASE ==================== */}
-			{topCreatorCards.length > 0 && (
+			{(topCreatorCards?.length ?? 0) > 0 && (
 				<section className="bg-kumo-recessed py-20">
 					<div className="mx-auto max-w-7xl px-6 md:px-10">
 						<div className="mb-10 text-center">

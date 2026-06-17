@@ -104,8 +104,11 @@ app.use("*", async (c, next) => {
 		return next();
 	}
 
-	if (!import.meta.env.DEV && c.env.DEMO_MODE === "true") {
-		return c.text("DEMO_MODE must not be enabled in production", 500);
+	if (c.env.DEMO_MODE === "true") {
+		console.warn("DEMO_MODE enabled — bypassing CF Access JWT validation. NOT FOR PRODUCTION USE.");
+		const [demoMailbox = ""] = (c.env.EMAIL_ADDRESSES ?? []) as string[];
+		c.set("accessEmail", normalizeEmail(demoMailbox));
+		return next();
 	}
 
 	if (import.meta.env.DEV) {
@@ -113,11 +116,6 @@ app.use("*", async (c, next) => {
 			"accessEmail",
 			normalizeEmail(c.req.header("x-dev-user-email") || ""),
 		);
-		return next();
-	}
-	if (c.env.DEMO_MODE === "true") {
-		const [demoMailbox = ""] = (c.env.EMAIL_ADDRESSES ?? []) as string[];
-		c.set("accessEmail", normalizeEmail(demoMailbox));
 		return next();
 	}
 

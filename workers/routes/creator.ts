@@ -13,7 +13,7 @@ app.get("/api/v1/creator/top", async (c) => {
 	try {
 		const configKey = "domains.json"
 		const obj = await c.env.BUCKET.get(configKey)
-		if (!obj) return c.json({ creators: [] })
+		if (!obj) return c.json([])
 
 		const config = (await obj.json()) as {
 			emailAddresses?: string[]

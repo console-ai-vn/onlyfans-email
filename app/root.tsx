@@ -120,7 +120,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				{/* Content Security Policy */}
 				<meta
 					httpEquiv="Content-Security-Policy"
-					content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"
+					content="default-src 'self'; script-src 'self' 'unsafe-inline' challenge.cloudflare.com challenges.cloudflare.com static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: imagedelivery.net https:; media-src 'self' videodelivery.net cloudflarestream.com; connect-src 'self' videodelivery.net cloudflarestream.com challenge.cloudflare.com challenges.cloudflare.com; frame-src challenge.cloudflare.com challenges.cloudflare.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';"
 				/>
 
 				<title>ONYX — Creator Economy Email Platform</title>
