@@ -45,8 +45,8 @@ created: 2026-06-17
 | W1   | 1. Rebrand+Config                | solo      | ✅ done   | nothing     |
 | W2   | 2. Payment + 5. Media            | parallel  | ✅ done   | Phase 1     |
 | W3   | 3. Items + 6. Live + 7. Security | parallel  | ✅ done   | Phase 1/2/5 |
-| W4   | 4. Content Gate                  | solo      | 10h       | Phase 3+5   |
-| W5   | 8. Landing UX                    | solo      | 12h       | Phase 2+3+4 |
+| W4   | 4. Content Gate                  | solo      | ✅ done   | Phase 3+5   |
+| W5   | 8. Landing UX                    | solo      | ✅ done   | Phase 2+3+4 |
 
 Total: ~80h (sequential) / ~48h (parallel with 2 devs)
 

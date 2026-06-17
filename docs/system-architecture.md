@@ -6,7 +6,7 @@
 | **Worker** | `onyx-email` (`workers/app.ts`) |
 | **Custom domains** | `box.onyx.com.vn` (auth), `start.onyx.com.vn` (public) |
 | **Trust boundary** | Cloudflare Access JWT + JWT refresh/access tokens |
-| **New in Wave 3** | InventoryDO, LiveDO (WebSocket Hibernation), JWT refresh, rate limiter, security headers, Turnstile stub |
+| **New in Wave 3** | InventoryDO, LiveDO (WebSocket Hibernation), Content Gate (PPV + signed URLs), Landing UX (creator profiles, pricing, onboarding), JWT refresh, rate limiter, security headers, Turnstile stub |
 
 ---
 
@@ -32,6 +32,8 @@ Hono Worker ? workers/app.ts
   app.route("/", paymentApp)          ? /api/v1/payments/* (SePay + Stripe)
   app.route("/", inventoryApp)        ? /api/v1/inventory/* (catalog, purchase, consume, history)
   app.route("/", liveApp)             ? /api/v1/live/* (create, start, end, join, schedule, chat WS)
+  app.route("/", gateApp)             ? /api/v1/gate/* (check, unlock, status — PPV + subscriber tiers)
+  app.route("/", creatorApp)          ? /api/v1/creator/* (public profiles, avatars, covers, content feed, top list)
   app.post("/api/v1/auth/refresh", ...)         ? JWT refresh endpoint
   app.post("/api/v1/auth/access-token", ...)    ? JWT access token endpoint
   app.all("/agents/*", ...)           ? EmailAgent DO (13 tools)
@@ -371,6 +373,97 @@ Outbound mail: MailboxDO ? getRecipientRouting
          ? POST /api/public/signup-requests (5/min)
          ? POST /api/v1/payments/checkout (10/min)
          ? Keyed by {cf-connecting-ip}:{path}:{method}
+```
+
+### 2.14 Content Gate — Check Access + PPV Unlock (Phase 04)
+
+```
+[UI] User views gated content (email or content grid item)
+     ? useGateCheck(mailboxId, emailId)
+     ? GET /api/v1/gate/check/:mailboxId/:emailId
+        [worker] Load gate metadata from R2 (gates/:mailboxId/:emailId.json)
+                 or fallback to email DO gate_meta field
+        [worker] If no gate meta → treat as public → { allowed: true, tier: "public" }
+        [worker] If tier === "subscribers" →
+                 checkGateAccess() →
+                 PaymentDO.getSubscription(userEmail) →
+                 active or past_due? → allowed. Else → blocked.
+        [worker] If tier === "ppv" →
+                 checkGateAccess() →
+                 Check R2 unlock record (unlocks/:mailboxId/:emailId/:userEmail.json)
+                 Already unlocked? → allowed.
+                 Else → check inventory for active "key" items →
+                 → { allowed: false, reason: "Use/Purchase a Key", keyPrice }
+        ? { allowed, tier, reason?, keyPrice?, requiresSubscription, alreadyUnlocked }
+
+[UI] GateOverlay renders:
+     - subscribers tier: LockIcon + "Subscribe to view" + CTA to /pricing
+     - ppv tier: LockKeyIcon + "Unlock with 1 Key" + CTA (uses active key or redirects to shop)
+
+[UI] User clicks "Unlock with Key"
+     ? useGateUnlock(mailboxId, emailId)
+     ? POST /api/v1/gate/unlock/:mailboxId/:emailId { itemId }
+        [worker] unlockPpvContent() →
+                 inventoryStub.consumeItem(itemId, resourceType="email_content", resourceId)
+                 → InventoryDO marks item as consumed + logs consumption
+        [worker] Persist unlock record to R2: unlocks/:mailboxId/:emailId/:userEmail.json
+        ? { success: true }
+     [UI] invalidate gate check query → content becomes visible
+```
+
+### 2.15 Creator Public API (Phase 08)
+
+```
+[Browser] Landing page or creator profile (no auth — start.onyx.com.vn)
+     ? GET /api/v1/creator/top
+        [worker] Read domains.json from R2 → get EMAIL_ADDRESSES (first 20)
+        [worker] For each, read mailboxes/{email}.json settings from R2
+        [worker] Filter: only include creators with isPublicBoard === true
+        ? [{ id, name, bio, avatarUrl, coverUrl, subscriberCount, postCount, ... }]
+
+     ? GET /api/v1/creator/:creatorId
+        [worker] Read mailboxes/{creatorId}.json from R2 settings
+        [worker] Construct avatar/cover URLs: /api/v1/creator/{creatorId}/avatar|cover
+        ? { id, name, bio, avatarUrl, coverUrl, subscriberCount, postCount, itemCount, website, location }
+
+     ? GET /api/v1/creator/:creatorId/content?page=1&limit=20
+        [worker] Returns paginated content items with gate metadata (tier, isUnlocked, keyPrice, previewUrl)
+        ? { items: CreatorContentItem[], totalCount, page, limit }
+
+     ? GET /api/v1/creator/:creatorId/avatar
+        [worker] BUCKET.get(profile/avatars/{creatorId}) → binary stream
+        Headers: Content-Type + Cache-Control (public, max-age=300) + ETag
+
+     ? GET /api/v1/creator/:creatorId/cover
+        [worker] BUCKET.get(profile/covers/{creatorId}) → binary stream
+        Same header handling as avatar
+
+[SSR] creator.$creatorId.tsx → meta() generates:
+      - <title>{name} — ONYX</title>
+      - og:title, og:description (bio truncated), og:image (avatar), og:type=profile
+      - JSON-LD structured data (@type: Person)
+
+[SSR] landing.tsx → meta() generates:
+      - og:type=website, twitter:card=summary_large_image
+      - JSON-LD structured data (@type: Organization)
+```
+
+### 2.16 Signed URLs — Tiered Media Access (Phase 04)
+
+```
+[UI] Request signed URL for R2 media
+     ? getSignedR2Url(env, mailboxId, objectKey, tier)
+        [worker] Derive HMAC key from REFRESH_SECRET (SHA-256 digest)
+        [worker] Sign JWT: { sub: objectKey, mailboxId, tier }, exp based on tier:
+                 public = 1h, subscribers = 24h, ppv = 1h (DEFAULT_EXPIRIES)
+        ? /api/v1/media/r2/{encodedKey}?token={jwt}
+
+[UI] Request signed URL for Stream video
+     ? getSignedStreamToken(env, videoId, tier)
+        [worker] Delegates to generateSignedToken() in workers/lib/stream.ts
+        ? HMAC JWT token with tier-based expiry
+
+[Middleware] GET /api/v1/media/r2/* verifies token before serving binary
 ```
 
 ---
@@ -905,6 +998,10 @@ Thread ID is stored on every email (`thread_id` column). When no header heuristi
 - **Rate limiter is in-memory:** Resets on Worker restart. Acceptable for current scale. Consider moving to DO or KV if rate-limit state persistence is needed.
 - **JWT secrets:** `REFRESH_SECRET` and `ACCESS_SECRET` are HS256 symmetric keys. Rotate manually via `wrangler secret put`; all existing tokens become invalid on rotation.
 - **NSFW classification:** Currently a stub (`scanImageForNsfw` always returns `{ safe: true }`). Real CF Images moderation integration is pending.
+- **Gate metadata:** Stored in R2 (`gates/:mailboxId/:emailId.json`) with fallback to email DO `gate_meta` field. Unlock records also in R2 (`unlocks/:mailboxId/:emailId/:userEmail.json`).
+- **Signed R2 URLs:** JWT-based with tiered expiry. Derives signing key from `REFRESH_SECRET` via SHA-256. Tokens verified in R2 proxy middleware.
+- **Creator profiles:** Served from R2 `mailboxes/{email}.json` settings. Avatar/cover images stored in `profile/avatars/` and `profile/covers/` R2 keys. Public (no auth), cached 5 min.
+- **Creator discovery:** `GET /api/v1/creator/top` — filters by `isPublicBoard: true` flag in mailbox settings. Reads from `domains.json` + per-mailbox R2 config.
 
 ---
 

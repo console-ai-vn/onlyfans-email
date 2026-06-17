@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Last updated** | 2026-06-17 |
-| **Status** | V1 + V1.5 + V2 + **Wave 3 (Phase 03, 06, 07) shipped** (internal use, prod `box.onyx.com.vn`) |
+| **Status** | **ALL 8 phases shipped** (V1 + V1.5 + V2 + Wave 3: Phase 02-08). Production `box.onyx.com.vn` + `start.onyx.com.vn`. |
 | **Next milestone** | V3 quality (on demand) / Stripe integration / NSFW real integration |
 | **Git** | `https://github.com/console-ai-vn/onlyfans-email` |
 
@@ -145,6 +145,45 @@ Theme: **production security posture**. Deployed **2026-06-17**.
 | **P7-8** | CSP headers (`applyCspHeaders`): compatible with CF Stream, Images, Turnstile, Web Analytics; `frame-ancestors 'none'` | ? |
 | **P7-9** | NSFW image scan stub (`workers/lib/nsfw-stub.ts`): `POST /api/v1/security/scan-image`, always returns `{ safe: true }` | ? |
 | **P7-10** | Security tests: `tests/security-hardening.test.ts` (sanitize, agent route parsing, tool auth forwarding) | ? |
+
+## 2.10. Shipped: Phase 04 — Content Gate (PPV, Signed URLs, GateOverlay, Tier Badges)
+
+Theme: **content monetization access control**. Deployed **2026-06-17**.
+
+| ID | Item | Status |
+|---|---|---|
+| **P4-1** | Content gate library (`workers/lib/content-gate.ts`): 3 tiers (public, subscribers, PPV), `checkGateAccess()` + `unlockPpvContent()` | ? |
+| **P4-2** | Gate API routes (`workers/routes/gate.ts`): `GET /api/v1/gate/check/:mailboxId/:emailId`, `POST /api/v1/gate/unlock`, `GET /api/v1/gate/status` | ? |
+| **P4-3** | Gate metadata stored in R2 (`gates/:mailboxId/:emailId.json`) with fallback to email DO | ? |
+| **P4-4** | PPV unlock: consumes a Key via InventoryDO, persists unlock record in R2 (`unlocks/:mailboxId/:emailId/:userEmail.json`) | ? |
+| **P4-5** | Subscribers tier: checks PaymentDO for active/past_due subscription | ? |
+| **P4-6** | Signed URL library (`workers/lib/signed-urls.ts`): tiered JWT expiry (public 1h, subscribers 24h, PPV 1h) for R2 + Stream | ? |
+| **P4-7** | Frontend: `GateOverlay` component with blurred preview, subscriber CTA, key unlock flow | ? |
+| **P4-8** | Frontend: `ContentTierBadge` (3 visual variants: public green, subscribers blue-lock, PPV amber-key) | ? |
+| **P4-9** | Frontend: `ContentGrid` with gate-aware thumbnails (blur + `GateOverlay` for locked), `onUnlockItem` handler | ? |
+| **P4-10** | Frontend queries: `useGateCheck`, `useGateUnlock`, `useGateStatus` via `app/queries/gate.ts` | ? |
+| **P4-11** | Gate route: `/gate/:mailboxId/:emailId` page with full unlock UX + error/success states | ? |
+
+## 2.11. Shipped: Phase 08 — Landing UX (Landing Page, Creator Profiles, Onboarding)
+
+Theme: **public-facing marketing + discovery UX**. Deployed **2026-06-17**.
+
+| ID | Item | Status |
+|---|---|---|
+| **P8-1** | Redesigned landing page (`app/routes/landing.tsx`): hero, features, how-it-works, pricing, creator showcase, FAQ, signup form, footer | ? |
+| **P8-2** | SEO meta tags on landing (`meta()` export): og:title, og:description, og:image, twitter:card, JSON-LD structured data | ? |
+| **P8-3** | Public pricing page (`app/routes/pricing.tsx`): 3 tiers with `TierCard` components, dark gradient hero | ? |
+| **P8-4** | `PricingTable` component (`app/components/PricingTable.tsx`): 3 tiers (Basic/Pro/Premium), formatVnd, highlighted=Most Popular, current plan badge | ? |
+| **P8-5** | `CreatorCard` component: cover gradient, avatar, name, bio, subscriber count, hover-lift animation | ? |
+| **P8-6** | `CreatorHero` component (from `CreatorHero.tsx`): cover image, avatar, subscriber/post counts, subscribe CTA | ? |
+| **P8-7** | `ContentGrid` component: 2-4 column grid, thumbnail with blur+`GateOverlay` for locked content, empty state with `ImageIcon` | ? |
+| **P8-8** | `SkeletonLoader` family: `SkeletonCard`, `SkeletonGrid`, `SkeletonText`, `SkeletonAvatar`, `SkeletonHero`, `SkeletonPage` | ? |
+| **P8-9** | `OnboardingWizard` 3-step flow (profile → pricing → first-post), progress indicator, skip/next/complete, PUT to `/api/v1/mailboxes/me`, avatar upload | ? |
+| **P8-10** | Public creator profile route (`app/routes/creator.$creatorId.tsx`): SSR with `meta()`, `CreatorHero` + tabs (Posts/Shop), `ContentGrid` + `ItemCard`, pagination, JSON-LD structured data | ? |
+| **P8-11** | Creator public API (`workers/routes/creator.ts`): `GET /api/v1/creator/top` (featured, isPublicBoard gated), `GET /api/v1/creator/:creatorId` (profile from R2 settings), `GET /api/v1/creator/:creatorId/content` (paginated, gate metadata), `GET /api/v1/creator/:creatorId/avatar` + `/cover` (serve from R2 `profile/avatars/` and `profile/covers/`) | ? |
+| **P8-12** | Frontend queries (`app/queries/creator.ts`): `useCreatorProfile`, `useCreatorContent` (paginated), `useCreatorShop`, `useTopCreators`, `useUpdateCreatorProfile` | ? |
+| **P8-13** | Landing: trust badges (Secure payments, No app install, Instant delivery), FAQ accordion (6 items), VietQR/Creator Economy messaging | ? |
+| **P8-14** | SEO: `og:type profile` on creator pages, `Organization` JSON-LD on landing, meta descriptions with bio fallback | ? |
 
 ---
 

@@ -36,6 +36,8 @@ at `/mcp` for external AI clients.
 - **Virtual item shop** ? 4 item types (key, token, gift, pass), catalog API, user inventories with consumption log, per-creator shop page, purchase flow via PaymentDO.
 - **Live streaming** ? WebSocket Hibernation for live chat, Cloudflare Stream Live Input auto-provisioning, WebRTC/HLS playback, viewer counting, pass-gated events, schedule page.
 - **Security hardening** ? JWT refresh/access token rotation (12h/30d), Cloudflare Turnstile integration, sliding-window rate limiter, security headers (HSTS, CSP, X-Frame-Options, COOP, Permissions-Policy), NSFW image scan stub.
+- **Content gate** ? 3 content tiers (public, subscribers, PPV), `GateOverlay` with blurred preview + unlock flow, signed R2/Stream URLs tiered by expiry (public 1h, subscribers 24h, PPV 1h), `ContentTierBadge` visual indicators, gate check/status/unlock API via `POST /api/v1/gate/unlock` + `GET /api/v1/gate/check`, per-content unlock records in R2, PPV key consumption via InventoryDO.
+- **Landing UX** ? redesigned `start.onyx.com.vn` landing page (hero, features, pricing, creator showcase, FAQ, signup form), public creator profiles at `/:creatorId` with SSR (SEO meta tags, JSON-LD structured data), shop tab with `ItemCard` grid, `PricingTable` + `TierCard` components, `CreatorCard` with avatar/cover/bio, `ContentGrid` with gate-aware thumbnails (blur + `GateOverlay` for locked content), `SkeletonLoader` family (`SkeletonCard`, `SkeletonGrid`, `SkeletonHero`, `SkeletonPage`, `SkeletonText`, `SkeletonAvatar`), `OnboardingWizard` 3-step flow (profile / pricing / first-post).
 - **Vietnamese UI** ? chat-style UX, not a Gmail clone.
 
 ## Stack
@@ -140,11 +142,14 @@ Browser (React 19 + RR7 SSR)
                                    +- /agents/*            ?  EmailAgent DO (kimi-k2.5, 13 tools)
                                    +- /api/v1/inventory/*  ?  InventoryDO (catalog, user inventories, consumption log)
                                    +- /api/v1/live/*       ?  LiveDO (events, WebSocket chat, Stream Live Input)
-                                   +- /api/v1/auth/*       ?  JWT refresh/access token endpoints
+                                    +- /api/v1/gate/*        ? Gate API (check, unlock, status)
                                    +- default.email ? postal-mime ? MailboxDO.inbox
 
 Public (start.onyx.com.vn)
-  ? /, /signup (no auth)  ?  POST /api/public/signup-requests
+  ? /, /signup, /pricing (no auth)   ? POST /api/public/signup-requests
+  ? /:creatorId (no auth)             ? GET /api/v1/creator/:creatorId (SSR profile)
+  ? GET /api/v1/creator/:creatorId/content ? public content feed
+  ? GET /api/v1/creator/top            ? featured creators list
 ```
 
 | Component | What |
@@ -187,6 +192,9 @@ Full diagram, data flow, schema, and bindings: [`docs/system-architecture.md`](.
 | Payment routes | `workers/routes/payment.ts` (SePay + Stripe) |
 | Inventory routes | `workers/routes/inventory.ts` (243 LOC: catalog, purchase, consume, history) |
 | Live routes | `workers/routes/live.ts` (188 LOC: create, start, end, join, schedule, chat WS) |
+| Gate routes | `workers/routes/gate.ts` (167 LOC: check, unlock, status per content) |
+| Creator API | `workers/routes/creator.ts` (150 LOC: public profiles, avatars/covers, content feed) |
+| Gate libs | `workers/lib/content-gate.ts` (181 LOC: tier logic, PPV unlock, gate metadata), `workers/lib/signed-urls.ts` (58 LOC: tiered JWT expiry for R2/Stream) |
 | Security libs | `workers/lib/token-refresh.ts`, `workers/lib/rate-limiter.ts`, `workers/lib/security-headers.ts`, `workers/lib/nsfw-stub.ts` |
 | Tests | `tests/*.test.ts` (22 files including security-hardening) |
 | Shared | `shared/` (folders, dates, cid-images) |
