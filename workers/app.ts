@@ -11,6 +11,8 @@ import { app as mediaApp } from "./routes/media";
 import { app as liveApp } from "./routes/live";
 import { app as gateApp } from "./routes/gate";
 import { app as creatorApp } from "./routes/creator";
+import { app as dmApp } from "./routes/dm";
+import { app as earningsApp } from "./routes/earnings";
 import { z } from "zod";
 import { applySecurityHeaders, applyCspHeaders } from "./lib/security-headers";
 import { generateRefreshToken, verifyRefreshToken, generateAccessToken } from "./lib/token-refresh";
@@ -188,6 +190,12 @@ app.route("/", gateApp);
 
 // Phase 08: Public creator profile routes (no auth required)
 app.route("/", creatorApp);
+
+// Phase 03: DM + Inbox routes (WebSocket + REST)
+app.route("/", dmApp);
+
+// Phase 04: Creator earnings routes
+app.route("/", earningsApp);
 
 // Agent WebSocket routing - must be before React Router catch-all
 app.all("/agents/*", async (c) => {
