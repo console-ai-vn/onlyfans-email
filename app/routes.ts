@@ -11,6 +11,8 @@ import {
 export default [
 	index("routes/landing.tsx"),
 	route("signup", "routes/signup.tsx"),
+	route("checkout", "routes/checkout.tsx"),
+	route("pricing", "routes/pricing.tsx"),
 	route("home", "routes/home-redirect.tsx"),
 	route("home/topics/:topicId", "routes/home-topic-redirect.tsx"),
 	route("app", "routes/home.tsx"),
@@ -23,6 +25,7 @@ export default [
 		]),
 		route("emails/:folder", "routes/email-list.tsx"),
 		route("settings", "routes/settings.tsx"),
+		route("media", "routes/media.tsx"),
 		route("audit", "routes/audit.tsx"),
 		route("admin/domains", "routes/admin-domains.tsx"),
 		route("admin/signups", "routes/admin-signup-queue.tsx"),

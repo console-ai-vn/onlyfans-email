@@ -62,7 +62,7 @@ function mcpResult(result: Record<string, unknown>) {
 }
 
 /**
- * EmailMCP — exposes email tools over the Model Context Protocol.
+ * EmailMCP � exposes email tools over the Model Context Protocol.
  *
  * Clients (ProtoAgent, Claude Code, Cursor, etc.) connect to the
  * `/mcp` endpoint and can list mailboxes, read/search emails,
@@ -70,7 +70,7 @@ function mcpResult(result: Record<string, unknown>) {
  */
 export class EmailMCP extends McpAgent<Env> {
 	server = new McpServer({
-		name: "vsbg-box",
+		name: "onyx-email",
 		version: "1.0.0",
 	});
 
@@ -111,7 +111,7 @@ export class EmailMCP extends McpAgent<Env> {
 			return null;
 		};
 
-		// ── list_mailboxes ─────────────────────────────────────────
+		// -- list_mailboxes -----------------------------------------
 		this.server.tool(
 			"list_mailboxes",
 			"List all available mailboxes",
@@ -122,7 +122,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── list_emails ────────────────────────────────────────────
+		// -- list_emails --------------------------------------------
 		this.server.tool(
 			"list_emails",
 			"List emails in a mailbox folder. Returns email metadata (id, subject, sender, recipient, date, read/starred status, thread_id).",
@@ -151,7 +151,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── get_email ──────────────────────────────────────────────
+		// -- get_email ----------------------------------------------
 		this.server.tool(
 			"get_email",
 			"Get a single email with its full body content. Use this to read the actual content of an email.",
@@ -173,7 +173,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── get_thread ─────────────────────────────────────────────
+		// -- get_thread ---------------------------------------------
 		this.server.tool(
 			"get_thread",
 			"Get all emails in a conversation thread. Returns all messages sorted chronologically.",
@@ -191,7 +191,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── search_emails ──────────────────────────────────────────
+		// -- search_emails ------------------------------------------
 		this.server.tool(
 			"get_contact_profile",
 			"Get a contact profile and private people memory for this mailbox, including bio, contact notes, relationship stage, tags, AI memory, and related thread IDs.",
@@ -285,10 +285,10 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── draft_reply ────────────────────────────────────────────
+		// -- draft_reply --------------------------------------------
 		this.server.tool(
 			"draft_reply",
-			"Draft a reply to an email and save it to the Drafts folder. Does NOT send — saves a draft for review.",
+			"Draft a reply to an email and save it to the Drafts folder. Does NOT send � saves a draft for review.",
 			{
 				mailboxId: z.string().describe("The mailbox email address"),
 				originalEmailId: z
@@ -315,7 +315,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── create_draft ───────────────────────────────────────────
+		// -- create_draft -------------------------------------------
 		this.server.tool(
 			"create_draft",
 			"Create a new draft email. Can be a new email or a reply draft.",
@@ -361,7 +361,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── update_draft ───────────────────────────────────────────
+		// -- update_draft -------------------------------------------
 		this.server.tool(
 			"update_draft",
 			"Update an existing draft email's content.",
@@ -397,7 +397,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── delete_email ───────────────────────────────────────────
+		// -- delete_email -------------------------------------------
 		this.server.tool(
 			"delete_email",
 			"Permanently delete an email by ID.",
@@ -413,7 +413,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── send_reply ─────────────────────────────────────────────
+		// -- send_reply ---------------------------------------------
 		this.server.tool(
 			"send_reply",
 			"Send a reply to an email. Only call after drafting and getting confirmation.",
@@ -455,7 +455,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── send_email ─────────────────────────────────────────────
+		// -- send_email ---------------------------------------------
 		this.server.tool(
 			"send_email",
 			"Send a new email (not a reply). Only call after getting confirmation.",
@@ -486,7 +486,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── mark_email_read ────────────────────────────────────────
+		// -- mark_email_read ----------------------------------------
 		this.server.tool(
 			"mark_email_read",
 			"Mark an email as read or unread.",
@@ -503,7 +503,7 @@ export class EmailMCP extends McpAgent<Env> {
 			},
 		);
 
-		// ── move_email ─────────────────────────────────────────────
+		// -- move_email ---------------------------------------------
 		this.server.tool(
 			"move_email",
 			"Move an email to a different folder (inbox, sent, draft, archive, trash).",

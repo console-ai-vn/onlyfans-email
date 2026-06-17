@@ -53,13 +53,13 @@ function assertAdminAccess(accessEmail: string, accessEmailAddresses: readonly s
 test("normalizeDomainConfig deduplicates and lowercases emails", () => {
 	assert.deepEqual(
 		normalizeDomainConfig({
-			domains: ["vsbg.vn", "vsbg.vn"],
-			emailAddresses: ["Admin@VSBG.VN", "admin@vsbg.vn"],
+			domains: ["onyx.com.vn", "onyx.com.vn"],
+			emailAddresses: ["Admin@ONYX.COM.VN", "admin@onyx.com.vn"],
 			accessEmailAddresses: ["CEO@Example.COM"],
 		}),
 		{
-			domains: ["vsbg.vn"],
-			emailAddresses: ["admin@vsbg.vn"],
+			domains: ["onyx.com.vn"],
+			emailAddresses: ["admin@onyx.com.vn"],
 			accessEmailAddresses: ["ceo@example.com"],
 		},
 	);
@@ -67,7 +67,7 @@ test("normalizeDomainConfig deduplicates and lowercases emails", () => {
 
 test("validateDomainConfig rejects emails outside configured domains", () => {
 	const error = validateDomainConfig({
-		domains: ["vsbg.vn"],
+		domains: ["onyx.com.vn"],
 		emailAddresses: ["ops@other.com"],
 		accessEmailAddresses: [],
 	});

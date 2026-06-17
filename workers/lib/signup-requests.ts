@@ -229,7 +229,7 @@ export async function approveSignupRequest(
 		const otpResult = await appendEmailToZeroTrustList(
 			automation,
 			mailboxEmail,
-			`VSBG Box login ${mailboxEmail}`,
+			`ONYX login ${mailboxEmail}`,
 		);
 		accessOtpAdded = otpResult.added;
 		accessOtpSkipped = otpResult.skipped;

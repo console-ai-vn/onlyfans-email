@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 type ThemeMode = "light" | "dark";
 
-const STORAGE_KEY = "vsbg-theme-mode";
+const STORAGE_KEY = "onyx-theme-mode";
 
 function preferredMode(): ThemeMode {
 	if (typeof window === "undefined") return "light";

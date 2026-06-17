@@ -11,6 +11,21 @@ export interface Env extends Cloudflare.Env {
 	CF_API_TOKEN?: string;
 	CF_API_EMAIL?: string;
 	ACCESS_OTP_LIST_ID?: string;
+	SEPAY_API_KEY?: string;
+	SEPAY_WEBHOOK_SECRET?: string;
+	STRIPE_SECRET?: string;
+	STRIPE_WEBHOOK_SECRET?: string;
+	PAYMENT: DurableObjectNamespace;
+	INVENTORY: DurableObjectNamespace;
+	LIVE: DurableObjectNamespace;
+	CF_STREAM_TOKEN?: string;
+	CF_STREAM_SIGNING_KEY?: string;
+	CF_IMAGES_TOKEN?: string;
+	CF_IMAGES_ACCOUNT_HASH?: string;
+	REFRESH_SECRET?: string;
+	ACCESS_SECRET?: string;
+	TURNSTILE_SECRET_KEY?: string;
+	TURNSTILE_SITE_KEY?: string;
 }
 
 export interface AccessVariables {

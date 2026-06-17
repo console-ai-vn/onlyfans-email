@@ -48,8 +48,8 @@ test("resolveAccessOtpAutomation prefers domain config over env", () => {
 });
 
 test("buildListAppendBody normalizes email", () => {
-	const body = buildListAppendBody("USER@Gmail.com", "VSBG signup");
+	const body = buildListAppendBody("USER@Gmail.com", "ONYX signup");
 	assert.deepEqual(body, {
-		append: [{ value: "user@gmail.com", description: "VSBG signup" }],
+		append: [{ value: "user@gmail.com", description: "ONYX signup" }],
 	});
 });

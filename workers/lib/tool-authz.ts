@@ -9,7 +9,7 @@ import {
 import type { MailboxPermission, MailboxRole } from "./permissions";
 import type { Env } from "../types";
 
-export const TOOL_ACCESS_EMAIL_HEADER = "x-vsbg-access-email";
+export const TOOL_ACCESS_EMAIL_HEADER = "x-onyx-access-email";
 
 export function readToolAccessEmail(request: Request | Headers): string {
 	const headers = request instanceof Headers ? request : request.headers;

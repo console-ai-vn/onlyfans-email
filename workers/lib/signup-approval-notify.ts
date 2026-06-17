@@ -11,13 +11,13 @@ export async function sendSignupApprovalNotification(
 ): Promise<{ sent: boolean; error?: string }> {
 	const fromMailbox =
 		((env.EMAIL_ADDRESSES ?? []) as string[]).find((entry) =>
-			entry.toLowerCase().endsWith("@vsbg.vn"),
-		) || "admin@vsbg.vn";
+			entry.toLowerCase().endsWith("@onyx.com.vn"),
+		) || "admin@onyx.com.vn";
 	const { subject, text, html } = buildSignupApprovalEmail(request);
 	try {
 		await sendEmail(env.EMAIL, {
 			to: request.personalEmail,
-			from: { email: fromMailbox, name: "VSBG Box" },
+			from: { email: fromMailbox, name: "ONYX" },
 			subject,
 			text,
 			html,

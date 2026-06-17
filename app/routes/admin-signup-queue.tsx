@@ -53,25 +53,25 @@ export default function AdminSignupQueueRoute() {
 		try {
 			const result = await approveRequest.mutateAsync(requestId);
 			const detail = result.fullyAutomated
-				? "Mailbox + Access login + email hướng dẫn đã gửi."
+				? "Mailbox + Access login + email hu?ng d?n d� g?i."
 				: [
 						result.accessOtpError,
 						result.notificationError,
 						!result.accessOtpAdded && !result.accessOtpSkipped
-							? "Access allowlist chưa cập nhật"
+							? "Access allowlist chua c?p nh?t"
 							: undefined,
-						!result.notificationSent ? "Chưa gửi email thông báo" : undefined,
+						!result.notificationSent ? "Chua g?i email th�ng b�o" : undefined,
 					]
 						.filter(Boolean)
-						.join(" · ") || "Mailbox đã tạo — kiểm tra automation";
+						.join(" � ") || "Mailbox d� t?o � ki?m tra automation";
 			toast.add({
-				title: result.fullyAutomated ? "Duyệt xong — full auto" : "Duyệt xong — cần check",
+				title: result.fullyAutomated ? "Duy?t xong � full auto" : "Duy?t xong � c?n check",
 				description: detail,
 				variant: result.fullyAutomated ? undefined : "error",
 			});
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Không duyệt được";
+				error instanceof Error ? error.message : "Kh�ng duy?t du?c";
 			toast.add({ title: message, variant: "error" });
 		} finally {
 			setActiveId(null);
@@ -82,10 +82,10 @@ export default function AdminSignupQueueRoute() {
 		setActiveId(requestId);
 		try {
 			await rejectRequest.mutateAsync(requestId);
-			toast.add({ title: "Đã từ chối" });
+			toast.add({ title: "�� t? ch?i" });
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Không từ chối được";
+				error instanceof Error ? error.message : "Kh�ng t? ch?i du?c";
 			toast.add({ title: message, variant: "error" });
 		} finally {
 			setActiveId(null);
@@ -115,11 +115,11 @@ export default function AdminSignupQueueRoute() {
 	return (
 		<div className="max-w-3xl px-4 py-8 md:px-8 space-y-5">
 			<div className="flex flex-wrap items-center gap-2">
-				<h1 className="text-xl font-semibold text-kumo-default">Duyệt đăng ký</h1>
+				<h1 className="text-xl font-semibold text-kumo-default">Duy?t dang k�</h1>
 				{automationReady ? (
 					<Badge variant="success">Full auto</Badge>
 				) : (
-					<Badge variant="outline">OTP chưa config</Badge>
+					<Badge variant="outline">OTP chua config</Badge>
 				)}
 				{isFetching && !isLoading && <Loader size="sm" />}
 			</div>
@@ -131,8 +131,8 @@ export default function AdminSignupQueueRoute() {
 			) : pending.length === 0 ? (
 				<Empty
 					icon={<UserPlusIcon size={48} className="text-kumo-inactive" />}
-					title="Không có request chờ"
-					description="Form start.vsbg.vn sẽ hiện ở đây khi có người đăng ký."
+					title="Kh�ng c� request ch?"
+					description="Form start.onyx.com.vn s? hi?n ? d�y khi c� ngu?i dang k�."
 				/>
 			) : (
 				<div className="space-y-3">
@@ -164,7 +164,7 @@ export default function AdminSignupQueueRoute() {
 											disabled={busy}
 											onClick={() => void handleReject(entry.id)}
 										>
-											Từ chối
+											T? ch?i
 										</Button>
 										<Button
 											variant="primary"
@@ -174,7 +174,7 @@ export default function AdminSignupQueueRoute() {
 											disabled={busy}
 											onClick={() => void handleApprove(entry.id)}
 										>
-											Duyệt
+											Duy?t
 										</Button>
 									</div>
 								</div>
@@ -189,7 +189,7 @@ export default function AdminSignupQueueRoute() {
 									</div>
 									<div className="rounded-lg bg-kumo-recessed px-3 py-2">
 										<dt className="text-xs uppercase tracking-wide text-kumo-subtle">
-											Email nhận thông báo
+											Email nh?n th�ng b�o
 										</dt>
 										<dd className="mt-1 font-semibold text-kumo-default">
 											{entry.personalEmail}
@@ -208,7 +208,7 @@ export default function AdminSignupQueueRoute() {
 			{processed.length > 0 && (
 				<details className="rounded-xl border border-kumo-line bg-kumo-base">
 					<summary className="cursor-pointer px-4 py-3 text-sm font-medium text-kumo-default">
-						Đã xử lý ({processed.length})
+						�� x? l� ({processed.length})
 					</summary>
 					<ul className="divide-y divide-kumo-line border-t border-kumo-line">
 						{processed.map((entry) => (
@@ -218,7 +218,7 @@ export default function AdminSignupQueueRoute() {
 									{statusBadge(entry.status)}
 								</div>
 								<div className="mt-1 text-kumo-subtle">
-									{entry.desiredMailbox} · {entry.personalEmail}
+									{entry.desiredMailbox} � {entry.personalEmail}
 								</div>
 							</li>
 						))}

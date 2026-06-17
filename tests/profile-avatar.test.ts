@@ -9,11 +9,11 @@ import {
 } from "../workers/lib/profile-avatar.ts";
 
 test("profileAvatarKey normalizes mailbox id", () => {
-	assert.equal(profileAvatarKey("User@VSBG.VN"), "profiles/user@vsbg.vn/avatar");
+	assert.equal(profileAvatarKey("User@ONYX.COM.VN"), "profiles/user@onyx.com.vn/avatar");
 });
 
 test("profileCoverKey normalizes mailbox id", () => {
-	assert.equal(profileCoverKey("User@VSBG.VN"), "profiles/user@vsbg.vn/cover");
+	assert.equal(profileCoverKey("User@ONYX.COM.VN"), "profiles/user@onyx.com.vn/cover");
 });
 
 test("decodeAvatarUpload accepts small PNG payload", () => {
@@ -55,7 +55,7 @@ test("decodeAvatarUpload rejects SVG", () => {
 
 test("extractMailboxEmailFromSender parses display name format", () => {
 	assert.equal(
-		extractMailboxEmailFromSender("Thai Hieu <hieu@vsbg.vn>"),
-		"hieu@vsbg.vn",
+		extractMailboxEmailFromSender("Thai Hieu <hieu@onyx.com.vn>"),
+		"hieu@onyx.com.vn",
 	);
 });

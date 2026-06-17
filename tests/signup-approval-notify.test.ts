@@ -9,14 +9,14 @@ test("buildSignupApprovalEmail tells user to login with mailbox not personal ema
 		createdAt: "2026-06-08T00:00:00.000Z",
 		displayName: "Zet",
 		personalEmail: "user@gmail.com",
-		desiredMailbox: "zet@vsbg.vn",
+		desiredMailbox: "zet@onyx.com.vn",
 		note: "",
 		storageKey: "signup-requests/x.json",
 	});
-	assert.match(subject, /zet@vsbg.vn/);
-	assert.match(text, /zet@vsbg.vn/);
+	assert.match(subject, /zet@onyx.com.vn/);
+	assert.match(text, /zet@onyx.com.vn/);
 	assert.match(text, /không dùng user@gmail.com/i);
 	assert.match(text, /OTP tại mailbox nội bộ/i);
-	assert.match(html, /Đăng nhập bằng <strong>zet@vsbg\.vn<\/strong>/);
+	assert.match(html, /Đăng nhập bằng <strong>zet@onyx\.com\.vn<\/strong>/);
 	assert.match(html, /không dùng để đăng nhập/);
 });

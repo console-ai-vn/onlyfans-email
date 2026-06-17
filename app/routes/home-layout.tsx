@@ -12,7 +12,7 @@ export default function HomeLayoutRoute() {
 				<div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
 					<div className="flex items-center gap-2">
 						<HouseIcon size={20} className="text-kumo-brand" />
-						<span className="font-semibold text-kumo-default">VSBG Home</span>
+						<span className="font-semibold text-kumo-default">ONYX Home</span>
 					</div>
 					<nav className="flex items-center gap-2">
 						<Link to="/home">

@@ -11,7 +11,7 @@ import MemberProfileTrigger from "~/components/home/MemberProfileTrigger";
 import api from "~/services/api";
 
 export function meta() {
-	return [{ title: "Manage feed â€” VSBG Box" }];
+	return [{ title: "Manage feed — ONYX" }];
 }
 
 export default function HomeFeedManageRoute() {

@@ -9,15 +9,15 @@ import {
 
 test("mergeMailboxAllowlist adds mailbox without duplicates", () => {
 	const merged = mergeMailboxAllowlist(
-		["admin@vsbg.vn", "TEST@vsbg.vn"],
-		"nomad@vsbg.vn",
+		["admin@onyx.com.vn", "TEST@onyx.com.vn"],
+		"nomad@onyx.com.vn",
 	);
-	assert.deepEqual(merged, ["admin@vsbg.vn", "test@vsbg.vn", "nomad@vsbg.vn"]);
+	assert.deepEqual(merged, ["admin@onyx.com.vn", "test@onyx.com.vn", "nomad@onyx.com.vn"]);
 });
 
 test("mergeMailboxAllowlist is idempotent for same mailbox", () => {
-	const merged = mergeMailboxAllowlist(["nomad@vsbg.vn"], "NOMAD@vsbg.vn");
-	assert.deepEqual(merged, ["nomad@vsbg.vn"]);
+	const merged = mergeMailboxAllowlist(["nomad@onyx.com.vn"], "NOMAD@onyx.com.vn");
+	assert.deepEqual(merged, ["nomad@onyx.com.vn"]);
 });
 
 test("defaultMailboxSettings uses display name for fromName", () => {
@@ -27,8 +27,8 @@ test("defaultMailboxSettings uses display name for fromName", () => {
 });
 
 test("buildApprovalNote records mailbox access automation", () => {
-	const note = buildApprovalNote("ceo@bdsmetro.com", "nomad@vsbg.vn", true, true);
-	assert.match(note, /Login nomad@vsbg.vn/);
+	const note = buildApprovalNote("ceo@bdsmetro.com", "nomad@onyx.com.vn", true, true);
+	assert.match(note, /Login nomad@onyx.com.vn/);
 	assert.match(note, /Access allowlist updated for mailbox login/);
 	assert.match(note, /welcome email sent/);
 });

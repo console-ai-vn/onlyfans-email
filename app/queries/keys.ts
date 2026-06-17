@@ -50,4 +50,17 @@ export const queryKeys = {
 		signupRequests: ["admin", "signup-requests"] as const,
 		permissions: (mailboxId: string) => ["admin", "permissions", mailboxId] as const,
 	},
+	payments: {
+		subscription: (mailboxId: string) => ["payments", "subscription", mailboxId] as const,
+		invoice: (id: string) => ["payments", "invoice", id] as const,
+		invoices: (mailboxId: string) => ["payments", "invoices", mailboxId] as const,
+	},
+	inventory: {
+		catalog: (creatorMailboxId?: string) =>
+			creatorMailboxId
+				? (["inventory", "catalog", creatorMailboxId] as const)
+				: (["inventory", "catalog"] as const),
+		userItems: (userEmail: string) => ["inventory", "items", userEmail] as const,
+		history: (userEmail: string) => ["inventory", "history", userEmail] as const,
+	},
 };

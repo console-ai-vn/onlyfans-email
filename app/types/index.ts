@@ -195,4 +195,32 @@ export interface HomeCommentListResponse {
 	limit: number;
 }
 
+export interface PaymentSubscription {
+	id: string
+	mailboxId: string
+	tier: string
+	status: string
+	amount: number
+	currency: string
+	currentPeriodStart: string
+	currentPeriodEnd: string
+	canceledAt: string | null
+	createdAt: string
+	updatedAt: string
+}
+
+export interface PaymentInvoice {
+	id: string
+	subscriptionId: string
+	mailboxId: string
+	amount: number
+	status: string
+	provider: string
+	providerTxnId: string | null
+	qrCode: string | null
+	dueDate: string
+	paidAt: string | null
+	createdAt: string
+}
+
 

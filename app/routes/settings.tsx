@@ -2,8 +2,11 @@ import { Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import {
 	BriefcaseIcon,
 	CameraIcon,
+	CreditCardIcon,
 	FloppyDiskIcon,
 	MapPinIcon,
+	ReceiptIcon,
+	XIcon,
 } from "@phosphor-icons/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
@@ -16,6 +19,11 @@ import {
 	useUploadMailboxAvatar,
 	useUploadMailboxCover,
 } from "~/queries/mailboxes";
+import {
+	useCancelSubscription,
+	useInvoices,
+	useSubscription,
+} from "~/queries/payments";
 import type { MailboxSettings } from "~/types";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -67,6 +75,14 @@ export default function SettingsRoute() {
 	const uploadCover = useUploadMailboxCover();
 	const avatarInputRef = useRef<HTMLInputElement>(null);
 	const coverInputRef = useRef<HTMLInputElement>(null);
+
+	// Billing
+	const { data: subData } = useSubscription(mailboxId);
+	const subscription = subData?.subscription ?? null;
+	const { data: invData } = useInvoices(mailboxId);
+	const invoices = invData?.invoices ?? [];
+	const cancelSubscription = useCancelSubscription(mailboxId!);
+	const [cancelling, setCancelling] = useState(false);
 
 	const [displayName, setDisplayName] = useState("");
 	const [role, setRole] = useState("");
@@ -288,6 +304,133 @@ export default function SettingsRoute() {
 							placeholder="Ho Chi Minh City"
 						/>
 						<Input label="Email" type="email" value={mailbox.email} disabled />
+					</section>
+
+					{/* Billing Section */}
+					<section className="mt-6 rounded-xl border border-kumo-line bg-kumo-base p-5">
+						<div className="mb-4 flex items-center gap-2">
+							<CreditCardIcon size={18} className="text-kumo-subtle" />
+							<h2 className="text-sm font-semibold text-kumo-default">Billing</h2>
+						</div>
+
+						{subscription ? (
+							<div className="space-y-4">
+								<div className="rounded-lg border border-kumo-line bg-kumo-recessed p-4">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-sm font-medium text-kumo-default capitalize">
+												{subscription.tier} Plan
+											</p>
+											<p className="text-xs text-kumo-subtle">
+												{new Intl.NumberFormat("vi-VN", {
+													style: "currency",
+													currency: "VND",
+													maximumFractionDigits: 0,
+												}).format(subscription.amount)}{" "}
+												/ month
+											</p>
+										</div>
+										<span
+											className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+												subscription.status === "active"
+													? "bg-emerald-100 text-emerald-700"
+													: subscription.status === "past_due"
+														? "bg-amber-100 text-amber-700"
+														: subscription.status === "cancelled"
+															? "bg-red-100 text-red-700"
+															: "bg-gray-100 text-gray-700"
+											}`}
+										>
+											{subscription.status.replace("_", " ")}
+										</span>
+									</div>
+									<div className="mt-2 text-xs text-kumo-subtle">
+										<p>
+											Period:{" "}
+											{new Date(subscription.currentPeriodStart).toLocaleDateString()}{" "}
+											&mdash;{" "}
+											{new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
+
+								{(subscription.status === "active" ||
+									subscription.status === "past_due") && (
+									<Button
+										variant="secondary"
+										size="sm"
+										loading={cancelling}
+										onClick={async () => {
+											setCancelling(true)
+											try {
+												await cancelSubscription.mutateAsync()
+												toastManager.add({
+													title: "Subscription cancelled",
+												})
+											} catch {
+												toastManager.add({
+													title: "Failed to cancel subscription",
+													variant: "error",
+												})
+											} finally {
+												setCancelling(false)
+											}
+										}}
+									>
+										<XIcon size={14} className="mr-1" />
+										Cancel Subscription
+									</Button>
+								)}
+							</div>
+						) : (
+							<div className="rounded-lg border border-dashed border-kumo-line bg-kumo-recessed p-4 text-center">
+								<p className="text-sm text-kumo-subtle">No active subscription</p>
+							</div>
+						)}
+
+						{invoices.length > 0 && (
+							<div className="mt-5">
+								<div className="mb-2 flex items-center gap-1.5">
+									<ReceiptIcon size={14} className="text-kumo-subtle" />
+									<h3 className="text-xs font-medium text-kumo-subtle">
+										Invoice History
+									</h3>
+								</div>
+								<div className="space-y-1.5">
+									{invoices.map((inv) => (
+										<div
+											key={inv.id}
+											className="flex items-center justify-between rounded-md border border-kumo-line bg-kumo-recessed px-3 py-2 text-xs"
+										>
+											<div>
+												<p className="text-kumo-default">
+													{new Intl.NumberFormat("vi-VN", {
+														style: "currency",
+														currency: "VND",
+														maximumFractionDigits: 0,
+													}).format(inv.amount)}
+												</p>
+												<p className="text-kumo-subtle">
+													{new Date(inv.createdAt).toLocaleDateString()} &middot;{" "}
+													{inv.provider}
+												</p>
+											</div>
+											<span
+												className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+													inv.status === "paid"
+														? "bg-emerald-100 text-emerald-700"
+														: inv.status === "failed"
+															? "bg-red-100 text-red-700"
+															: "bg-gray-100 text-gray-700"
+												}`}
+											>
+												{inv.status}
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
 					</section>
 				</div>
 			</div>

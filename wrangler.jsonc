@@ -1,99 +1,119 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "vsbg-box",
+	"name": "onyx-email",
 	"compatibility_date": "2025-11-28",
 	"main": "./workers/app.ts",
 	"routes": [
 		{
-			"pattern": "box.vsbg.vn",
-			"custom_domain": true
+			"pattern": "box.onyx.com.vn",
+			"custom_domain": true,
 		},
 		{
-			"pattern": "start.vsbg.vn",
-			"custom_domain": true
-		}
+			"pattern": "start.onyx.com.vn",
+			"custom_domain": true,
+		},
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"vars": {
 		// TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
 		// The worker now fails closed outside local development if Access is not configured.
-		"DOMAINS": "vsbg.vn",
-		"EMAIL_ADDRESSES": [
-			"admin@vsbg.vn",
-			"test@vsbg.vn"
-		],
-		"ACCESS_EMAIL_ADDRESSES": [
-			"ceo@bdsmetro.com"
-		],
+		"DOMAINS": "onyx.com.vn",
+		"EMAIL_ADDRESSES": ["admin@onyx.com.vn", "test@onyx.com.vn"],
+		"ACCESS_EMAIL_ADDRESSES": ["ceo@bdsmetro.com"],
 		"CF_ACCOUNT_ID": "a23f698a1f594da1a6fb657c5bea74a8",
 		"ACCESS_OTP_LIST_ID": "4304b973-26ff-417b-9fac-254ebcbda942",
-		"CF_API_EMAIL": "ceo@bdsmetro.com"
+		"CF_API_EMAIL": "ceo@bdsmetro.com",
+		"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
 	},
 	"send_email": [
 		{
 			"name": "EMAIL",
-			"remote": true
-		}
+			"remote": true,
+		},
 	],
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",
-			"bucket_name": "vsbg-box",
-			"preview_bucket_name": "vsbg-box"
-		}
+			"bucket_name": "onyx-email",
+			"preview_bucket_name": "onyx-email",
+		},
 	],
+	// Secrets to set via `wrangler secret put`:
+	//   CF_STREAM_TOKEN — Cloudflare Stream API token (for video pipeline)
+	//   CF_IMAGES_TOKEN — Cloudflare Images API token (for image pipeline)
+	//   CF_IMAGES_ACCOUNT_HASH — Cloudflare Images account hash (for variant URL construction)
+	//   REFRESH_SECRET — HS256 secret for refresh tokens (30d). Generate: openssl rand -base64 32
+	//   ACCESS_SECRET — HS256 secret for access tokens (12h). Generate: openssl rand -base64 32
+	//   TURNSTILE_SECRET_KEY — Cloudflare Turnstile secret key for server-side verification
+	//   CF_STREAM_SIGNING_KEY — Base64-encoded HS256 key for Stream signed URLs
+	//   SEPA_API_KEY — SePay API key for VietQR generation
+	//   SEPA_WEBHOOK_SECRET — SePay webhook HMAC secret
 	"ai": {
-		"binding": "AI"
+		"binding": "AI",
 	},
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "MAILBOX",
-				"class_name": "MailboxDO"
+				"class_name": "MailboxDO",
 			},
 			{
 				"name": "EMAIL_AGENT",
-				"class_name": "EmailAgent"
+				"class_name": "EmailAgent",
 			},
 			{
 				"name": "EMAIL_MCP",
-				"class_name": "EmailMCP"
+				"class_name": "EmailMCP",
 			},
 			{
 				"name": "ORG_FEED",
-				"class_name": "OrgFeedDO"
-			}
-		]
+				"class_name": "OrgFeedDO",
+			},
+			{
+				"name": "PAYMENT",
+				"class_name": "PaymentDO",
+			},
+			{
+				"name": "INVENTORY",
+				"class_name": "InventoryDO",
+			},
+			{
+				"name": "LIVE",
+				"class_name": "LiveDO",
+			},
+		],
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": [
-				"MailboxDO"
-			]
+			"new_sqlite_classes": ["MailboxDO"],
 		},
 		{
 			"tag": "v2",
-			"new_sqlite_classes": [
-				"EmailAgent"
-			]
+			"new_sqlite_classes": ["EmailAgent"],
 		},
 		{
 			"tag": "v3",
-			"new_sqlite_classes": [
-				"EmailMCP"
-			]
+			"new_sqlite_classes": ["EmailMCP"],
 		},
 		{
 			"tag": "v4",
-			"new_sqlite_classes": [
-				"OrgFeedDO"
-			]
-		}
-	]
+			"new_sqlite_classes": ["OrgFeedDO"],
+		},
+		{
+			"tag": "v5",
+			"new_sqlite_classes": ["PaymentDO"],
+		},
+		{
+			"tag": "v6",
+			"new_sqlite_classes": ["InventoryDO"],
+		},
+		{
+			"tag": "v7",
+			"new_sqlite_classes": ["LiveDO"],
+		},
+	],
 }

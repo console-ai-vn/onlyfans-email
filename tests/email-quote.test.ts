@@ -12,7 +12,7 @@ test("stripQuotedMailHtml removes blockquote history", () => {
 });
 
 test("stripQuotedMailPlainText removes On ... wrote tail", () => {
-	const text = "test\n\nOn Mon, Jun 8, 2026, 2:54 PM, admin@vsbg.vn wrote:\n\nold";
+	const text = "test\n\nOn Mon, Jun 8, 2026, 2:54 PM, admin@onyx.com.vn wrote:\n\nold";
 	assert.equal(stripQuotedMailPlainText(text), "test");
 });
 

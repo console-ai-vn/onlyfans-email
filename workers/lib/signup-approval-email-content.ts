@@ -1,6 +1,6 @@
 import type { SignupRequestRecord } from "./signup-requests";
 
-const LOGIN_URL = "https://box.vsbg.vn/app";
+const LOGIN_URL = "https://box.onyx.com.vn/app";
 
 function escapeHtml(value: string) {
 	return value
@@ -13,7 +13,7 @@ function escapeHtml(value: string) {
 export function buildSignupApprovalEmail(request: SignupRequestRecord) {
 	const mailbox = request.desiredMailbox;
 	const personal = request.personalEmail;
-	const subject = `VSBG Box — Tài khoản ${mailbox} đã được duyệt`;
+	const subject = `ONYX — Tài khoản ${mailbox} đã được duyệt`;
 	const text = [
 		`Xin chào ${request.displayName},`,
 		"",
@@ -25,7 +25,7 @@ export function buildSignupApprovalEmail(request: SignupRequestRecord) {
 		"3. Nhận mã OTP tại mailbox nội bộ — email cá nhân chỉ dùng để nhận thông báo này",
 		"",
 		"Trân trọng,",
-		"VSBG Box",
+		"ONYX",
 	].join("\n");
 	const html = `
 <p>Xin chào <strong>${escapeHtml(request.displayName)}</strong>,</p>

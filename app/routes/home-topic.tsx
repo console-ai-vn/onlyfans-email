@@ -18,7 +18,7 @@ import { queryKeys } from "~/queries/keys";
 import api from "~/services/api";
 
 export function meta() {
-	return [{ title: "Topic â€” VSBG Box" }];
+	return [{ title: "Topic — ONYX" }];
 }
 
 export default function HomeTopicRoute() {

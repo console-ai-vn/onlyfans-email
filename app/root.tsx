@@ -50,7 +50,7 @@ function makeQueryClient() {
 	});
 }
 
-// Lazy singleton for the browser â€” avoids module-scope instantiation that
+// Lazy singleton for the browser — avoids module-scope instantiation that
 // leaks cache across SSR requests.
 let browserQueryClient: QueryClient | undefined;
 function getQueryClient() {
@@ -88,11 +88,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 					sizes="48x48 32x32 16x16"
 				/>
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<title>VSBG Box</title>
+				<title>ONYX</title>
 				<script
 					dangerouslySetInnerHTML={{
 						__html:
-							`try{var m=localStorage.getItem("vsbg-theme-mode")||` +
+							`try{var m=localStorage.getItem("onyx-theme-mode")||` +
 							`(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");` +
 							`document.documentElement.dataset.mode=m}catch(e){}`,
 					}}
@@ -157,7 +157,7 @@ export function ErrorBoundary({ error }: { error: unknown }) {
 		<div className="flex items-center justify-center min-h-screen p-8">
 			<Empty
 				icon={<WarningIcon size={48} className="text-kumo-inactive" />}
-				title={status === 404 ? "404 â€” Page not found" : title}
+				title={status === 404 ? "404 — Page not found" : title}
 				description={description}
 				contents={
 					<Button

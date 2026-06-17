@@ -26,7 +26,7 @@ import {
 import { queryKeys } from "~/queries/keys";
 
 export function meta() {
-	return [{ title: "Mailboxes â€” VSBG Box" }];
+	return [{ title: "Mailboxes — ONYX" }];
 }
 
 export default function HomeRoute() {

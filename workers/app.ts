@@ -7,6 +7,13 @@ import { routeAgentRequest } from "agents";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { createRequestHandler } from "react-router";
 import { app as apiApp, receiveEmail } from "./index";
+import { app as mediaApp } from "./routes/media";
+import { app as liveApp } from "./routes/live";
+import { z } from "zod";
+import { applySecurityHeaders, applyCspHeaders } from "./lib/security-headers";
+import { generateRefreshToken, verifyRefreshToken, generateAccessToken } from "./lib/token-refresh";
+import { checkRateLimit } from "./lib/rate-limiter";
+import { scanImageForNsfw } from "./lib/nsfw-stub";
 import { EmailMCP } from "./mcp";
 import { getAccessEmail, normalizeEmail } from "./lib/access";
 import {
@@ -19,6 +26,9 @@ import type { AccessVariables, Env } from "./types";
 
 export { MailboxDO } from "./durableObject";
 export { OrgFeedDO } from "./durableObject/orgFeed";
+export { PaymentDO } from "./durableObject/payment";
+export { InventoryDO } from "./durableObject/inventory";
+export { LiveDO } from "./durableObject/live";
 export { EmailAgent } from "./agent";
 export { EmailMCP } from "./mcp";
 
@@ -43,7 +53,7 @@ const mcpHandler = EmailMCP.serve("/mcp", {
 				methods: "GET, POST, DELETE, OPTIONS",
 			}
 		: {
-				origin: "https://box.vsbg.vn",
+				origin: "https://box.onyx.com.vn",
 				methods: "GET, POST, DELETE, OPTIONS",
 			},
 });
@@ -66,7 +76,7 @@ function getAccessUrls(teamDomain: string) {
 // Main app that wraps the API and adds React Router fallback
 const app = new Hono<{ Bindings: Env; Variables: AccessVariables }>();
 
-const PUBLIC_HOSTNAMES = new Set(["start.vsbg.vn"]);
+const PUBLIC_HOSTNAMES = new Set(["start.onyx.com.vn"]);
 const PUBLIC_ASSET_PATHS = new Set([
 	"/favicon.ico",
 	"/favicon.svg",
@@ -79,12 +89,10 @@ function isPublicRequest(req: Request) {
 	if (url.pathname === "/" || url.pathname === "/signup") return true;
 	if (PUBLIC_ASSET_PATHS.has(url.pathname)) return true;
 	if (url.pathname.startsWith("/assets/")) return true;
-	return url.pathname === "/api/public/signup-requests" && req.method === "POST";
+	return (
+		url.pathname === "/api/public/signup-requests" && req.method === "POST"
+	);
 }
-
-const CSP_POLICY =
-	"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-	"img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'none'; object-src 'none'";
 
 // Cloudflare Access JWT validation middleware (production only)
 app.use("*", async (c, next) => {
@@ -97,9 +105,11 @@ app.use("*", async (c, next) => {
 		return c.text("DEMO_MODE must not be enabled in production", 500);
 	}
 
-	// Skip validation in development
 	if (import.meta.env.DEV) {
-		c.set("accessEmail", normalizeEmail(c.req.header("x-dev-user-email") || ""));
+		c.set(
+			"accessEmail",
+			normalizeEmail(c.req.header("x-dev-user-email") || ""),
+		);
 		return next();
 	}
 	if (c.env.DEMO_MODE === "true") {
@@ -110,7 +120,6 @@ app.use("*", async (c, next) => {
 
 	const { POLICY_AUD, TEAM_DOMAIN } = c.env;
 
-	// Fail closed in production if Access is not configured.
 	if (!POLICY_AUD || !TEAM_DOMAIN) {
 		return c.text(
 			"Cloudflare Access must be configured in production. Set POLICY_AUD and TEAM_DOMAIN.",
@@ -137,10 +146,12 @@ app.use("*", async (c, next) => {
 	return next();
 });
 
+// Phase 07: Security headers + CSP middleware
 app.use("*", async (c, next) => {
 	await next();
 	if (isPublicRequest(c.req.raw)) return;
-	c.res.headers.set("Content-Security-Policy", CSP_POLICY);
+	c.res = applySecurityHeaders(c.res);
+	c.res = applyCspHeaders(c.res);
 });
 
 function forwardMcpRequest(c: {
@@ -165,11 +176,21 @@ app.all("/mcp/*", (c) => forwardMcpRequest(c));
 // Mount the API routes
 app.route("/", apiApp);
 
+// Mount media pipeline routes (Cloudflare Stream & Images)
+app.route("/", mediaApp);
+
+// Mount live streaming routes (WebSocket + Stream Live)
+app.route("/", liveApp);
+
 // Agent WebSocket routing - must be before React Router catch-all
 app.all("/agents/*", async (c) => {
 	const mailboxId = parseAgentMailboxId(new URL(c.req.url).pathname);
 	if (mailboxId) {
-		const role = await resolveToolMailboxRole(c.env, c.var.accessEmail, mailboxId);
+		const role = await resolveToolMailboxRole(
+			c.env,
+			c.var.accessEmail,
+			mailboxId,
+		);
 		if (!role || !roleHasPermission(role, "read")) {
 			return c.text("Forbidden", 403);
 		}
@@ -177,9 +198,68 @@ app.all("/agents/*", async (c) => {
 
 	const request = withToolAccessEmail(c.req.raw, c.var.accessEmail);
 	return (
-		(await routeAgentRequest(request, c.env)) ??
-		c.text("Agent not found", 404)
+		(await routeAgentRequest(request, c.env)) ?? c.text("Agent not found", 404)
 	);
+});
+
+// Phase 07: Auth token endpoints
+const RefreshBody = z.object({ refreshToken: z.string().min(1) });
+
+app.post("/api/v1/auth/refresh", async (c) => {
+	let body: z.infer<typeof RefreshBody>
+	try { body = RefreshBody.parse(await c.req.json()) } catch {
+		return c.json({ error: "Invalid request body" }, 400)
+	}
+	const secret = c.env.REFRESH_SECRET
+	if (!secret) return c.json({ error: "Refresh secret not configured" }, 500)
+	const result = await verifyRefreshToken(body.refreshToken, secret)
+	if (!result) return c.json({ error: "Invalid or expired refresh token" }, 401)
+	const accessSecret = c.env.ACCESS_SECRET || secret
+	const accessToken = await generateAccessToken(result.email, accessSecret)
+	const refreshToken = await generateRefreshToken(result.email, secret)
+	return c.json({ accessToken, refreshToken })
+});
+
+app.post("/api/v1/auth/access-token", async (c) => {
+	let body: z.infer<typeof RefreshBody>
+	try { body = RefreshBody.parse(await c.req.json()) } catch {
+		return c.json({ error: "Invalid request body" }, 400)
+	}
+	const secret = c.env.REFRESH_SECRET
+	if (!secret) return c.json({ error: "Refresh secret not configured" }, 500)
+	const result = await verifyRefreshToken(body.refreshToken, secret)
+	if (!result) return c.json({ error: "Invalid or expired refresh token" }, 401)
+	const accessSecret = c.env.ACCESS_SECRET || secret
+	const accessToken = await generateAccessToken(result.email, accessSecret)
+	return c.json({ accessToken })
+});
+
+// Phase 07: Rate limiting for sensitive endpoints
+app.use("/api/public/signup-requests", async (c, next) => {
+	if (c.req.method !== "POST") return next()
+	const ip = c.req.header("cf-connecting-ip") || "unknown"
+	const result = checkRateLimit(`signup:${ip}`, 5, 60000)
+	if (!result.allowed) return c.json({ error: "Too many signup requests" }, 429)
+	return next()
+});
+
+app.use("/api/v1/payments/checkout", async (c, next) => {
+	if (c.req.method !== "POST") return next()
+	const ip = c.req.header("cf-connecting-ip") || "unknown"
+	const result = checkRateLimit(`checkout:${ip}`, 10, 60000)
+	if (!result.allowed) return c.json({ error: "Too many checkout attempts" }, 429)
+	return next()
+});
+
+// Phase 07: NSFW image scan stub
+app.post("/api/v1/security/scan-image", async (c) => {
+	let body: { imageUrl?: string }
+	try { body = await c.req.json() as { imageUrl?: string } } catch {
+		return c.json({ error: "Invalid JSON body" }, 400)
+	}
+	if (!body.imageUrl) return c.json({ error: "imageUrl required" }, 400)
+	const result = await scanImageForNsfw(body.imageUrl)
+	return c.json(result)
 });
 
 // React Router catch-all: serves the SPA for all non-API routes
@@ -200,7 +280,11 @@ export default {
 		try {
 			await receiveEmail(event, env, ctx);
 		} catch (e) {
-			console.error("Failed to process incoming email:", (e as Error).message, (e as Error).stack);
+			console.error(
+				"Failed to process incoming email:",
+				(e as Error).message,
+				(e as Error).stack,
+			);
 			// Re-throw so Cloudflare's email routing can retry delivery or bounce the message.
 			// Swallowing the error would silently drop the email.
 			throw e;

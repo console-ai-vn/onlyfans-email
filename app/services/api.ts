@@ -15,6 +15,8 @@ import type {
 	HomeTopicListResponse,
 	InternalNote,
 	Mailbox,
+	PaymentInvoice,
+	PaymentSubscription,
 } from "~/types";
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -416,6 +418,149 @@ const api = {
 		`/api/v1/home/topics/${encodeURIComponent(topicId)}/images/${encodeURIComponent(imageId)}`,
 	homeCommentImageUrl: (commentId: string, imageId: string) =>
 		`/api/v1/home/comments/${encodeURIComponent(commentId)}/images/${encodeURIComponent(imageId)}`,
+
+	// Payments
+	checkout: (payload: { mailboxId: string; tier: string }) =>
+		post<{
+			subscription: PaymentSubscription
+			invoice: PaymentInvoice
+			qrCode: string
+			amount: number
+			tier: string
+		}>("/api/v1/payments/checkout", payload),
+	getInvoice: (invoiceId: string, mailboxId: string) =>
+		get<{
+			invoice: PaymentInvoice
+			subscription: PaymentSubscription | null
+		}>(`/api/v1/payments/invoice/${encodeURIComponent(invoiceId)}?mailboxId=${encodeURIComponent(mailboxId)}`),
+	getSubscription: (mailboxId: string) =>
+		get<{ subscription: PaymentSubscription | null }>(
+			`/api/v1/payments/subscription/${encodeURIComponent(mailboxId)}`,
+		),
+	cancelSubscription: (mailboxId: string) =>
+		post<{ subscription: PaymentSubscription | null }>(
+			`/api/v1/payments/subscription/${encodeURIComponent(mailboxId)}/cancel`,
+		),
+	getInvoices: (mailboxId: string) =>
+		get<{ invoices: PaymentInvoice[] }>(
+			`/api/v1/payments/invoices/${encodeURIComponent(mailboxId)}`,
+		),
+
+	// Media
+	initStreamUpload: () =>
+		post<{ uploadURL: string; uid: string }>("/api/v1/media/upload/stream/init"),
+	getStreamVideoStatus: (videoId: string) =>
+		get<{
+			state: string;
+			playback: { hls: string; dash: string };
+			thumbnail: string;
+			duration: number;
+		}>(`/api/v1/media/stream/${encodeURIComponent(videoId)}/status`),
+	deleteStreamVideo: (videoId: string) =>
+		del<void>(`/api/v1/media/stream/${encodeURIComponent(videoId)}`),
+	listStreamVideos: (mailboxId: string) =>
+		get<
+			Array<{
+				uid: string;
+				thumbnail: string;
+				status: { state: string };
+				duration: number;
+				created: string;
+			}>
+		>(`/api/v1/media/stream/list/${encodeURIComponent(mailboxId)}`),
+	initImagesUpload: () =>
+		post<{ uploadURL: string; id: string }>("/api/v1/media/upload/images/init"),
+	getImageVariants: (imageId: string) =>
+		get<{
+			original: string;
+			thumbnail: string;
+			medium: string;
+			full: string;
+		}>(`/api/v1/media/images/${encodeURIComponent(imageId)}/variants`),
+	deleteMediaImage: (imageId: string) =>
+		del<void>(`/api/v1/media/images/${encodeURIComponent(imageId)}`),
+	listImages: (mailboxId: string) =>
+		get<
+			Array<{
+				id: string;
+				variants: string[];
+				uploaded: string;
+			}>
+		>(`/api/v1/media/images/list/${encodeURIComponent(mailboxId)}`),
+	uploadR2Media: (formData: FormData) =>
+		request<{ key: string; url: string; filename: string }>(
+			"/api/v1/media/upload/r2",
+			{
+				method: "POST",
+				body: formData,
+				headers: {} as Record<string, string>,
+			},
+		),
+	getSignedStreamToken: (videoId: string, expirySeconds = 3600) =>
+		get<{ token: string }>(
+			`/api/v1/media/signed-stream/${encodeURIComponent(videoId)}?expiry=${expirySeconds}`,
+		),
+
+	// Inventory
+	getCatalog: (creatorMailboxId?: string) =>
+		get<{ items: Array<{
+			id: string
+			creatorMailboxId: string
+			type: string
+			name: string
+			description: string
+			price: number
+			imageUrl: string | null
+			active: boolean
+			createdAt: string
+			updatedAt: string
+		}> }>(
+			creatorMailboxId
+				? `/api/v1/inventory/catalog/${encodeURIComponent(creatorMailboxId)}`
+				: "/api/v1/inventory/catalog",
+		),
+	createCatalogItem: (params: {
+		creatorMailboxId: string
+		type: string
+		name: string
+		description: string
+		price: number
+		imageUrl?: string
+	}) =>
+		post<{ item: Record<string, unknown> }>("/api/v1/inventory/catalog", params),
+	updateCatalogItem: (itemId: string, params: {
+		type?: string
+		name?: string
+		description?: string
+		price?: number
+		imageUrl?: string
+	}) =>
+		patch<{ item: Record<string, unknown> }>(
+			`/api/v1/inventory/catalog/${encodeURIComponent(itemId)}`,
+			params,
+		),
+	purchaseItem: (params: { userEmail: string; itemId: string }) =>
+		post<{
+			inventoryEntry: Record<string, unknown>
+			subscription: Record<string, unknown>
+			invoice: Record<string, unknown>
+			item: Record<string, unknown>
+		}>("/api/v1/inventory/purchase", params),
+	getUserItems: (userEmail: string) =>
+		get<{ items: Array<Record<string, unknown>> }>(
+			`/api/v1/inventory/inventory/${encodeURIComponent(userEmail)}`,
+		),
+	consumeItem: (params: {
+		userEmail: string
+		itemId: string
+		resourceType: string
+		resourceId: string
+	}) =>
+		post<{ success: boolean }>("/api/v1/inventory/consume", params),
+	getPurchaseHistory: (userEmail: string) =>
+		get<{ history: Array<Record<string, unknown>> }>(
+			`/api/v1/inventory/history/${encodeURIComponent(userEmail)}`,
+		),
 };
 
 export default api;

@@ -29,7 +29,7 @@ test("assertAuditAdminAccess allows configured privileged users", () => {
 
 test("assertAuditAdminAccess rejects non-admin users", () => {
 	assert.throws(
-		() => assertAuditAdminAccess("admin@vsbg.vn", ["ceo@bdsmetro.com"]),
+		() => assertAuditAdminAccess("admin@onyx.com.vn", ["ceo@bdsmetro.com"]),
 		/admin access/i,
 	);
 });

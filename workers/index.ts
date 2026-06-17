@@ -83,6 +83,8 @@ import {
 } from "./lib/signup-requests";
 import { resolveContextMailboxRole } from "./lib/mailbox";
 import { homeApp } from "./routes/home-feed";
+import { app as paymentApp } from "./routes/payment";
+import { app as inventoryApp } from "./routes/inventory";
 
 type AppContext = Context<MailboxContext>;
 const ALLOW_FORWARDING = true;
@@ -110,7 +112,7 @@ const SignupAutomationBody = z.object({
 const CreateMailboxBody = z.object({
 	email: z.string().email(),
 	name: z.string().min(1),
-	settings: z.record(z.any()).optional(), // unvalidated — agentSystemPrompt goes straight to AI
+	settings: z.record(z.any()).optional(), // unvalidated � agentSystemPrompt goes straight to AI
 });
 
 const SignupRequestBody = z.object({
@@ -194,7 +196,7 @@ function getAuditActor(c: AppContext, mailboxId: string) {
 const app = new Hono<MailboxContext>();
 app.use("/api/*", cors({
 	origin: (origin) => {
-		// Same-origin requests have no Origin header — allow them.
+		// Same-origin requests have no Origin header � allow them.
 		if (!origin) return origin;
 		// In development, allow localhost for Vite dev server.
 		try {
@@ -375,6 +377,8 @@ app.get("/api/v1/boards", async (c) => {
 });
 
 app.route("/api/v1/home", homeApp);
+app.route("/api/v1/payments", paymentApp);
+app.route("/", inventoryApp);
 
 app.get("/api/v1/config", async (c) => {
 	const config = await getDomainConfig(c.env);
@@ -493,8 +497,8 @@ app.post("/api/public/signup-requests", async (c) => {
 		return c.json({ error: parsed.error.issues[0]?.message || "Invalid signup request" }, 400);
 	}
 	const body = parsed.data;
-	if (!body.desiredMailbox.toLowerCase().endsWith("@vsbg.vn")) {
-		return c.json({ error: "Mailbox must use @vsbg.vn" }, 400);
+	if (!body.desiredMailbox.toLowerCase().endsWith("@onyx.com.vn")) {
+		return c.json({ error: "Mailbox must use @onyx.com.vn" }, 400);
 	}
 
 	const clientIp =
@@ -856,7 +860,7 @@ app.post("/api/v1/mailboxes/:mailboxId/drafts", async (c: AppContext) => {
 	const mailboxId = c.req.param("mailboxId")!;
 	const { to, cc, bcc, subject, body, in_reply_to, thread_id, draft_id } = DraftBody.parse(await c.req.json());
 	const stub = c.var.mailboxStub;
-	if (draft_id) await stub.deleteEmail(draft_id); // not atomic — create-then-delete would be safer
+	if (draft_id) await stub.deleteEmail(draft_id); // not atomic � create-then-delete would be safer
 	const messageId = crypto.randomUUID();
 	const now = new Date().toISOString();
 	await stub.createEmail(Folders.DRAFT, {

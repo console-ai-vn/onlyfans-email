@@ -17,7 +17,7 @@ import { queryKeys } from "~/queries/keys";
 import api from "~/services/api";
 
 export function meta() {
-	return [{ title: "Feed â€” VSBG Box" }];
+	return [{ title: "Feed — ONYX" }];
 }
 
 export default function HomeFeedRoute() {

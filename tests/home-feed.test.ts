@@ -22,12 +22,12 @@ function isOrgMember(
 
 test("isOrgMember accepts configured team and admin emails", () => {
 	const config = {
-		emailAddresses: ["admin@vsbg.vn", "test@vsbg.vn"],
+		emailAddresses: ["admin@onyx.com.vn", "test@onyx.com.vn"],
 		accessEmailAddresses: ["ceo@bdsmetro.com"],
 	};
-	assert.equal(isOrgMember("admin@vsbg.vn", config), true);
+	assert.equal(isOrgMember("admin@onyx.com.vn", config), true);
 	assert.equal(isOrgMember("ceo@bdsmetro.com", config), true);
-	assert.equal(isOrgMember("outsider@vsbg.vn", config), false);
+	assert.equal(isOrgMember("outsider@onyx.com.vn", config), false);
 });
 
 test("sanitizeFeedHtml strips script tags, inline handlers, and blocked tags", () => {
