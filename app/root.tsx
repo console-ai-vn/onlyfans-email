@@ -81,6 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 		<html lang="en">
 			<head>
 				<meta charSet="UTF-8" />
+				<link rel="manifest" href="/manifest.json" />
 				<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 				<link
 					rel="icon"
@@ -88,9 +89,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 					href="/favicon.ico"
 					sizes="48x48 32x32 16x16"
 				/>
-				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+				<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 				<meta name="theme-color" content="#0a1020" />
 				<meta name="color-scheme" content="dark light" />
+
+				{/* iOS PWA meta tags */}
+				<meta
+					name="apple-mobile-web-app-capable"
+					content="yes"
+				/>
+				<meta
+					name="apple-mobile-web-app-status-bar-style"
+					content="black-translucent"
+				/>
+				<link rel="apple-touch-icon" href="/icons/apple-icon-180.png" />
 
 				{/* SEO meta tags */}
 				<meta
@@ -140,6 +152,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				{children}
 				<ScrollRestoration />
 				<Scripts />
+				{/* Service worker registration */}
+				<script
+					dangerouslySetInnerHTML={{
+						__html:
+							`if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
+					}}
+				/>
 			</body>
 		</html>
 	)

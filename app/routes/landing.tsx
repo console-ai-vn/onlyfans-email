@@ -18,6 +18,7 @@ import { useNavigate } from "react-router"
 import CreatorCard from "~/components/CreatorCard"
 import PricingTable from "~/components/PricingTable"
 import { useTopCreators } from "~/queries/creator"
+import InstallBanner from "~/components/InstallBanner"
 import type { CreatorCardData } from "~/components/CreatorCard"
 
 export function meta() {
@@ -589,6 +590,19 @@ export default function LandingRoute() {
 								{status === "submitting" ? "Submitting..." : "Request Access"}
 							</button>
 						</form>
+					</div>
+				</div>
+			</section>
+
+			{/* ==================== INSTALL APP CTA ==================== */}
+			<section className="bg-kumo-recessed py-12 md:hidden">
+				<div className="mx-auto max-w-md px-6 text-center">
+					<div className="rounded-2xl border border-kumo-line bg-kumo-base p-6">
+						<InstallBanner />
+						<p className="mt-4 text-xs text-kumo-subtle">
+							Install ONYX for a full-screen experience with quick access from
+							your home screen.
+						</p>
 					</div>
 				</div>
 			</section>
