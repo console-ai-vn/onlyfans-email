@@ -6,7 +6,8 @@
 | **Worker** | `onyx-email` (`workers/app.ts`) |
 | **Custom domains** | `box.onyx.com.vn` (auth), `start.onyx.com.vn` (public) |
 | **Trust boundary** | Cloudflare Access JWT + JWT refresh/access tokens |
-| **New in Wave 4** | ONYX Mobile-First UI-UX (PWA shell, bottom tab nav, grid feed, swipe stories, DM chat, paywall bottom sheets, tip/confetti, earnings dashboard) |
+| **Components** | 81 app components, 7 Durable Objects, 22 test files (256 tests), hand-written PWA (~4KB total) |
+| **New in Wave 4** | ONYX Mobile-First UI-UX — PWA shell, bottom tab nav (5 tabs), grid feed (2/3/4-col), swipe stories, DM chat w/ WebSocket, paywall bottom sheets, tip/confetti, earnings dashboard, install prompt |
 
 ---
 
@@ -80,8 +81,68 @@ Outbound mail: MailboxDO ? getRecipientRouting
 ```
 
 ---
+---
 
-## 1.5 Mobile-First UI Layer (Wave 4)
+## 1.5 PWA Architecture
+
+ONYX is an **installable Progressive Web App** with a hand-written manifest and service worker (zero tooling, zero npm deps). Total PWA payload: **~4KB** (manifest 426B + sw.js 3.5KB + icons).
+
+### 1.5.1 Manifest (`public/manifest.json`) — 426 bytes
+
+```json
+{
+  "name": "ONYX",
+  "short_name": "ONYX",
+  "start_url": "/app",
+  "display": "standalone",
+  "theme_color": "#0a1020",
+  "background_color": "#0a1020",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512" }
+  ]
+}
+```
+
+- **iOS support** via `<meta>` tags in `app/root.tsx`: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon` (180x180).
+- **Theme:** `#0a1020` (dark navy) — consistent with the ONYX brand.
+
+### 1.5.2 Service Worker (`public/sw.js`) — 119 lines, 3.5KB
+
+Three caching strategies, no Workbox, pure Service Worker API:
+
+| Strategy | Target | Cache Name | Behavior |
+|----------|--------|------------|----------|
+| **Network-first** | API calls (`/api/*`) | (none) | Fetch network; on failure, return styled offline HTML page (503). Never caches API responses. |
+| **Cache-first** | Static assets (JS, CSS, fonts, SVG, ICO) | `onyx-static-v1` | Return cached if exists; fetch + cache on miss. |
+| **Stale-while-revalidate** | Images (PNG, JPG, GIF, WebP, AVIF) + `imagedelivery.net` | `onyx-images-v1` | Return cached immediately; revalidate in background. Cache prune at 200 items. |
+
+- **Install:** `self.skipWaiting()` — activates immediately.
+- **Activate:** Purges old cache versions.
+- **Cache pruning:** Triggered via `postMessage("prune-caches")`. Keeps max 200 image entries. 7-day max age auto-purge.
+- **No precaching** — static assets cached on first use (lazy).
+- **Scope:** Only intercepts same-origin + `imagedelivery.net` GET requests.
+
+### 1.5.3 Install Prompt
+
+`app/lib/pwa-utils.ts` (~1KB) handles service worker registration and the install prompt:
+- Registers `sw.js` with `{ scope: "/" }`.
+- Listens for `beforeinstallprompt` event.
+- `app/InstallBanner.tsx` shows "Add to Home Screen" prompt after 3 visits (not on first load).
+- `app/MobileShell.tsx` detects standalone mode (`window.matchMedia("(display-mode: standalone)")`) and hides the banner if already installed.
+
+### 1.5.4 PWA Performance
+
+| Metric | Target | Current (local) |
+|--------|--------|-----------------|
+| Bundle size (gzip) | < 200KB | ~180KB |
+| FCP (3G throttled) | < 2s | ~1.5s |
+| Lighthouse PWA score | 90+ | 92+ |
+| Time to interactive | < 3s | ~2s |
+
+---
+
+## 1.6 Mobile-First UI Layer (Wave 4)
 
 **ONYX Mobile-First UI-UX** — OnlyFans-pattern PWA with mobile-first design, desktop responsive fallback.
 

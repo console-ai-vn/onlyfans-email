@@ -265,17 +265,66 @@ wrangler secret put ACCESS_SECRET
 
 ### 3.13 Smoke test
 
-1. Visit `https://box.onyx.com.vn` ? Cloudflare Access login ? land on `/app`.
+1. Visit `https://box.onyx.com.vn` → Cloudflare Access login → land on `/app`.
 2. The mailbox `admin@onyx.com.vn` should auto-create (it's in `EMAIL_ADDRESSES`).
-3. Send a test email from `admin@onyx.com.vn` to a Gmail address ? check it lands (or hits the "internal-only" 403 if Gmail is not in `EMAIL_ADDRESSES`).
-4. Send an email **to** `admin@onyx.com.vn` from Gmail ? it should appear in Inbox within a few seconds.
-5. Visit `https://start.onyx.com.vn` ? landing page, no Access prompt.
+3. Send a test email from `admin@onyx.com.vn` to a Gmail address → check it lands (or hits the "internal-only" 403 if Gmail is not in `EMAIL_ADDRESSES`).
+4. Send an email **to** `admin@onyx.com.vn` from Gmail → it should appear in Inbox within a few seconds.
+5. Visit `https://start.onyx.com.vn` → landing page, no Access prompt.
 6. Test payment checkout: trigger a subscription and verify SePay webhook delivery.
 7. Test media upload: verify Stream/Images direct upload URLs work; verify signed tokens.
 8. Test inventory: `GET /api/v1/inventory/catalog` should return empty `{ items: [] }` on fresh deploy.
 9. Test live: `GET /api/v1/live/schedule` should return `{ events: [] }` on fresh deploy.
 10. Test JWT auth: `POST /api/v1/auth/refresh` with a valid refresh token should return `{ accessToken, refreshToken }`.
 11. Verify security headers: `curl -I https://box.onyx.com.vn/api/v1/mailboxes` should include `strict-transport-security`, `x-frame-options`, `x-content-type-options`, `content-security-policy`.
+
+### 3.14 DEMO_MODE (Bypass Access for Demo)
+
+`DEMO_MODE` is an env var that bypasses Cloudflare Access JWT validation for quick demos. **Never use in production.**
+
+| Setting | Behavior |
+|---|---|
+| `DEMO_MODE = "true"` | Worker impersonates the first `EMAIL_ADDRESSES` entry. No Access login required. |
+| `DEMO_MODE` unset or `"false"` | Normal CF Access JWT validation (fail-closed). |
+
+**To enable demo mode in local dev or staging:**
+
+```bash
+# In .dev.vars (local)
+echo 'DEMO_MODE=true' >> .dev.vars
+
+# Or in wrangler.jsonc vars (deploy)
+# "vars": { "DEMO_MODE": "true" }
+```
+
+> **Warning:** `DEMO_MODE` is not gated by an environment assertion yet (see V3-7 in project-roadmap). If `DEMO_MODE="true"` accidentally reaches production, all visitors bypass authentication. Ensure it is removed or set to `"false"` before deploying to `box.onyx.com.vn`.
+
+### 3.15 PWA Testing
+
+ONYX is an installable PWA. After deploy, verify PWA functionality:
+
+1. **Manifest check:** Open DevTools → Application → Manifest. Verify `name: "ONYX"`, `start_url: "/app"`, `display: standalone`, `theme_color: #0a1020`.
+2. **Service worker:** DevTools → Application → Service Workers. Verify `sw.js` is registered and **activated** (Status: "activated and is running").
+3. **Install prompt:** On Chrome for Android (or desktop Chrome with flag `chrome://flags/#enable-pwa-install`):
+   - Visit `https://box.onyx.com.vn/app` (mobile viewport or device).
+   - After 3 visits, the "Add to Home Screen" banner should appear.
+   - Click install → ONYX launches in standalone window (no browser chrome).
+4. **Offline test:**
+   - Install the PWA, then enable airplane mode.
+   - App should show the styled offline page ("You're offline. ONYX requires internet.") on any API-dependent route.
+   - Previously loaded static assets (JS, CSS, icons) should still render from `onyx-static-v1` cache.
+   - Previously viewed images should display from `onyx-images-v1` cache (SWR).
+5. **Cache strategies (DevTools → Application → Cache Storage):**
+   - `onyx-static-v1`: should contain JS/CSS/fonts/SVG files after first load.
+   - `onyx-images-v1`: should contain images + `imagedelivery.net` URLs after browsing feeds.
+   - API responses (`/api/*`) should never be cached.
+6. **iOS:** On Safari iOS, tap Share → "Add to Home Screen". Verify: standalone mode, correct icon (180x180 `apple-touch-icon`), status bar matches `#0a1020`.
+7. **Lighthouse:** Run Chrome DevTools → Lighthouse → Progressive Web App category. Should score **90+** (current local: 92+).
+8. **Performance (Lighthouse):** FCP < 2s on simulated 3G, TTI < 3s, bundle < 200KB gzip.
+9. **Mobile gestures:** On touch device, verify:
+   - Swipe left/right between tabs (Feed ↔ Explore ↔ Create ↔ DM ↔ Profile).
+   - Pull-to-refresh on feed pages triggers spinner + reload.
+   - Double-tap detection (like animation), long-press detection (context menus).
+10. **Desktop fallback:** On ≥768px viewport, verify `DesktopSidebar` replaces `BottomTabBar` (collapsed icons, expand on hover).
 
 ---
 
@@ -295,6 +344,9 @@ wrangler secret put ACCESS_SECRET
 | Stream Live Input not created | `CF_STREAM_TOKEN` or `CF_ACCOUNT_ID` missing | See section 3.9 and verify vars |
 | Rate limit 429 on signup/checkout | Too many requests from same IP | Wait for window reset; adjust limiter config |
 | No CSP/Security headers on API | Middleware not applied | Verify `app.use("*")` in `workers/app.ts:150-155` |
+| PWA not installable | Manifest or SW not served | Check `public/manifest.json` + `public/sw.js` exist; verify `Content-Type` headers |
+| Service worker not activating | Old SW still controlling | Unregister DevTools → Application → Service Workers → Unregister; wait for new activation |
+| DEMO_MODE bypasses auth in prod | `DEMO_MODE` set to `"true"` in `wrangler.jsonc` | Remove or set to `"false"` immediately |
 
 ---
 
@@ -305,7 +357,8 @@ wrangler secret put ACCESS_SECRET
 | Worker name | `onyx-email-local` | `onyx-email` |
 | R2 bucket | `onyx-email-local` | `onyx-email` |
 | `EMAIL` binding | `remote: false` (mailpit-style) | `remote: true` (Email Service) |
-| Auth | `import.meta.env.DEV` ? trust `x-dev-user-email` header | CF Access JWT (fail-closed) |
+| Auth | `import.meta.env.DEV` → trust `x-dev-user-email` header | CF Access JWT (fail-closed) |
+| `DEMO_MODE` | Can be `"true"` for quick testing | **Never set to `"true"`** — must be `"false"` or unset |
 | Custom domains | none | `box.onyx.com.vn`, `start.onyx.com.vn` |
 | DO migrations | `v1`-`v7` (new_sqlite_classes) | `v1`-`v7` (same) |
 

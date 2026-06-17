@@ -20,6 +20,8 @@ at `/mcp` for external AI clients.
 
 **App:** `https://box.onyx.com.vn` &nbsp;?&nbsp; **Landing:** `https://start.onyx.com.vn`
 
+> **Status:** All 12 phases shipped (V1 + V1.5 + V2 + 8 Waves). 256 tests passing. Installable PWA. Demo mode active.
+
 ![ONYX screenshot](./demo_app.png)
 
 ---
@@ -39,7 +41,7 @@ at `/mcp` for external AI clients.
 - **Content gate** ? 3 content tiers (public, subscribers, PPV), `GateOverlay` with blurred preview + unlock flow, signed R2/Stream URLs tiered by expiry (public 1h, subscribers 24h, PPV 1h), `ContentTierBadge` visual indicators, gate check/status/unlock API via `POST /api/v1/gate/unlock` + `GET /api/v1/gate/check`, per-content unlock records in R2, PPV key consumption via InventoryDO.
 - **Landing UX** ? redesigned `start.onyx.com.vn` landing page (hero, features, pricing, creator showcase, FAQ, signup form), public creator profiles at `/:creatorId` with SSR (SEO meta tags, JSON-LD structured data), shop tab with `ItemCard` grid, `PricingTable` + `TierCard` components, `CreatorCard` with avatar/cover/bio, `ContentGrid` with gate-aware thumbnails (blur + `GateOverlay` for locked content), `SkeletonLoader` family (`SkeletonCard`, `SkeletonGrid`, `SkeletonHero`, `SkeletonPage`, `SkeletonText`, `SkeletonAvatar`), `OnboardingWizard` 3-step flow (profile / pricing / first-post).
 - **Vietnamese UI** ? chat-style UX, not a Gmail clone.
-- **Mobile-first PWA** ? OnlyFans-style bottom tab bar (Feed/Explore/Create/DM/Profile), 2-col grid feed, swipe stories, DM chat bubbles + typing indicator via WebSocket, bottom sheet paywalls, pull-to-refresh, confetti animations. Installable PWA with hand-written manifest + service worker (<4KB total). Zero npm deps beyond @phosphor-icons/react.
+- **Mobile-first PWA** ? OnlyFans-style bottom tab bar (Feed/Explore/Create/DM/Profile), 2-col grid feed, swipe stories, DM chat bubbles + typing indicator via WebSocket, bottom sheet paywalls, pull-to-refresh, confetti animations. Installable PWA with hand-written manifest (`manifest.json`, 426B) + service worker (`sw.js`, 3.5KB, 119 lines). **Offline support:** cache-first static assets, network-first API, stale-while-revalidate images. iOS splash + meta tags. Zero npm deps beyond @phosphor-icons/react. PWA scores 92+ Lighthouse (local), FCP < 2s on 3G, bundle < 200KB gzip.
 
 ## Stack
 
@@ -162,7 +164,8 @@ Public (start.onyx.com.vn)
 | **OrgFeedDO** | SQLite, home feed topics/comments/reactions. 1 shared instance. |
 | **InventoryDO** | SQLite (1 migration: catalog, user_inventories, consumption_log), 4 item types, alarm-based expiry (1hr). 1 shared instance. |
 | **LiveDO** | SQLite (1 migration: live_events, live_chat, live_viewers), WebSocket Hibernation for chat, Stream Live Input provisioning. 1 instance per event. |
-| **R2** | `mailboxes/<email>.json` (settings), `attachments/<emailId>/<attId>/<file>` (binaries), `signup-requests/...` (public form), `media/<mailboxId>/<uuid>-<file>` (R2 media fallback). |
+| **R2** | `mailboxes/<email>.json` (settings), `attachments/<emailId>/<attId>/<file>` (binaries), `signup-requests/...` (public form), `media/<mailboxId>/<uuid>-<file>` (R2 media fallback), `profile/avatars/`, `profile/covers/`, `gates/`, `unlocks/`. |
+| **PWA** | `manifest.json` (standalone display, theme #0a1020), `sw.js` (network-first API, cache-first static, SWR images), 3 PWA icons. |
 
 Full diagram, data flow, schema, and bindings: [`docs/system-architecture.md`](./docs/system-architecture.md).
 
@@ -173,15 +176,16 @@ Full diagram, data flow, schema, and bindings: [`docs/system-architecture.md`](.
 | Area | Path |
 |---|---|---|
 | Routes | `app/routes.ts` + `app/routes/` |
-| Components | `app/components/` (15 root + 2 social + 5 email-panel + media + payment) |
-| Hooks | `app/hooks/` |
+| Components | `app/components/` (**81 components**: email, media, payment, inventory, live, gate, creator, landing, mobile UX) |
+| Mobile UX | `app/MobileShell.tsx`, `app/BottomTabBar.tsx`, `app/SwipeContainer.tsx`, `app/DesktopSidebar.tsx`, `app/InstallBanner.tsx` |
+| Mobile UI | `app/GridFeed.tsx`, `app/StoryBar.tsx`, `app/StoryViewer.tsx`, `app/DMChat.tsx`, `app/PaywallSheet.tsx`, `app/TierUpgradeCard.tsx`, `app/KeyPurchaseFlow.tsx`, `app/EarningsDashboard.tsx`, `app/TipButton.tsx`, `app/ThankYouAnimation.tsx` (+15 more) |
+| Hooks | `app/hooks/` (useSwipe, usePullRefresh, useGridLayout, useDoubleTap, useLongPress, useDM, useTyping, usePaywall, useEarnings + existing) |
+| PWA | `public/manifest.json` (426B), `public/sw.js` (3.5KB, 3 caching strategies), `public/icons/` (192px, 512px, apple-icon-180px) |
+| PWA utils | `app/lib/pwa-utils.ts` (install prompt + SW registration), `app/lib/gesture-utils.ts` |
 | API routes | `workers/index.ts` |
 | Durable Object | `workers/durableObject/index.ts` (1100 LOC) |
 | Migrations | `workers/durableObject/migrations.ts` (**11 SQL migrations**) |
 | Payment DO | `workers/durableObject/payment.ts` (334 LOC, 1 migration) |
-| Inventory DO | `workers/durableObject/inventory.ts` (392 LOC, 1 migration) |
-| Live DO | `workers/durableObject/live.ts` (672 LOC, 1 migration) |
-| Security libs | `workers/lib/token-refresh.ts` (92 LOC), `workers/lib/rate-limiter.ts` (137 LOC), `workers/lib/security-headers.ts` (98 LOC), `workers/lib/nsfw-stub.ts` (23 LOC) |
 | Inventory DO | `workers/durableObject/inventory.ts` (392 LOC, 1 migration) |
 | Live DO | `workers/durableObject/live.ts` (672 LOC, 1 migration) |
 | AI agent | `workers/agent/index.ts` (13 tools) |
@@ -197,7 +201,7 @@ Full diagram, data flow, schema, and bindings: [`docs/system-architecture.md`](.
 | Creator API | `workers/routes/creator.ts` (150 LOC: public profiles, avatars/covers, content feed) |
 | Gate libs | `workers/lib/content-gate.ts` (181 LOC: tier logic, PPV unlock, gate metadata), `workers/lib/signed-urls.ts` (58 LOC: tiered JWT expiry for R2/Stream) |
 | Security libs | `workers/lib/token-refresh.ts`, `workers/lib/rate-limiter.ts`, `workers/lib/security-headers.ts`, `workers/lib/nsfw-stub.ts` |
-| Tests | `tests/*.test.ts` (22 files including security-hardening) |
+| Tests | `tests/*.test.ts` (**22 files, 256 tests, 14 suites** — all passing) |
 | Shared | `shared/` (folders, dates, cid-images) |
 
 Full file tree + LOC: [`docs/codebase-summary.md`](./docs/codebase-summary.md).

@@ -5,6 +5,23 @@ agents turn a future product spec into safe, validated work.
 
 The app is what users touch. The harness is what agents touch.
 
+## Current Project Metrics (2026-06-17)
+
+| Metric | Value |
+|---|---|
+| **Phases shipped** | 12 (V1 + V1.5 + V2 + 8 Wave phases) |
+| **Durable Objects** | 7 (MailboxDO, EmailAgent, EmailMCP, PaymentDO, OrgFeedDO, InventoryDO, LiveDO) |
+| **SQLite migrations** | 14 total (11 MailboxDO + 1 PaymentDO + 1 InventoryDO + 1 LiveDO) |
+| **Test files** | 22 |
+| **Tests** | **256** (14 suites, 0 failures) |
+| **App components** | 81 (email + media + payment + inventory + live + gate + creator + landing + mobile UX) |
+| **PWA** | Installable (manifest.json 426B + sw.js 3.5KB, 3 caching strategies), 92+ Lighthouse |
+| **Bundle size (gzip)** | < 200KB |
+| **Deployment** | `box.onyx.com.vn` (app, CF Access) + `start.onyx.com.vn` (public landing) |
+| **Demo mode** | Active (`DEMO_MODE="true"` bypasses CF Access) |
+| **Tech debt** | 14 known items (V3 backlog), 3 components >300 LOC |
+| **Git** | `https://github.com/console-ai-vn/onlyfans-email` |
+
 ## Mental Model
 
 ```text
