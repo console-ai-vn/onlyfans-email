@@ -2,26 +2,198 @@
 @import "@cloudflare/kumo/styles/tailwind";
 @import "tailwindcss";
 
-body {
-  margin: 0;
+/* ============================================================
+   ONYX Theme — CSS Custom Properties
+   ============================================================ */
+
+:root {
+	--onyx-brand: #4f7cff;
+	--onyx-brand-light: #6a90ff;
+	--onyx-brand-dark: #3a5fd9;
+	--onyx-accent: #1ed6a0;
+	--onyx-accent-light: #45e6b8;
+	--onyx-bg-dark: #0a1020;
+	--onyx-bg-mid: #111827;
+	--onyx-bg-card: #1a2332;
+	--onyx-text-primary: #f1f5f9;
+	--onyx-text-secondary: #94a3b8;
+	--onyx-text-muted: #64748b;
+	--onyx-border: rgba(255, 255, 255, 0.08);
+	--onyx-border-light: rgba(255, 255, 255, 0.15);
+	--onyx-glass-bg: rgba(255, 255, 255, 0.06);
+	--onyx-glass-border: rgba(255, 255, 255, 0.1);
 }
 
-/* TipTap list styles */
+body {
+	margin: 0;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes pulse-skeleton {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+@keyframes confetti-fall {
+	0% {
+		opacity: 1;
+		transform: translateY(0) rotate(0deg) scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(100vh) rotate(720deg) scale(0.3);
+	}
+}
+
+@keyframes scaleIn {
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Animation utility classes */
+.animate-fade-in {
+	animation: fadeIn 0.5s ease-out forwards;
+}
+.animate-slide-up {
+	animation: slideUp 0.5s ease-out forwards;
+}
+.animate-slide-down {
+	animation: slideDown 0.3s ease-out forwards;
+}
+.animate-scale-in {
+	animation: scaleIn 0.4s ease-out forwards;
+}
+
+/* Stagger animation delays */
+.animate-delay-100 {
+	animation-delay: 100ms;
+}
+.animate-delay-200 {
+	animation-delay: 200ms;
+}
+.animate-delay-300 {
+	animation-delay: 300ms;
+}
+.animate-delay-400 {
+	animation-delay: 400ms;
+}
+.animate-delay-500 {
+	animation-delay: 500ms;
+}
+
+/* ============================================================
+   TipTap ProseMirror Styles
+   ============================================================ */
+
 .ProseMirror ul {
-  list-style-type: disc;
-  padding-left: 1.5em;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+	list-style-type: disc;
+	padding-left: 1.5em;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
 }
 
 .ProseMirror ol {
-  list-style-type: decimal;
-  padding-left: 1.5em;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+	list-style-type: decimal;
+	padding-left: 1.5em;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
 }
 
 .ProseMirror li {
-  margin-top: 0.25em;
-  margin-bottom: 0.25em;
+	margin-top: 0.25em;
+	margin-bottom: 0.25em;
+}
+
+/* ============================================================
+   Scrollbar hide utility
+   ============================================================ */
+
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}
+
+/* ============================================================
+   Glass morphism utility
+   ============================================================ */
+
+.glass {
+	background: var(--onyx-glass-bg);
+	border: 1px solid var(--onyx-glass-border);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+}
+
+/* ============================================================
+   Gradient text utility
+   ============================================================ */
+
+.text-gradient-brand {
+	background: linear-gradient(
+		135deg,
+		var(--onyx-brand) 0%,
+		var(--onyx-accent) 100%
+	);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
 }

@@ -9,10 +9,14 @@ import {
 	Loader,
 	Toasty,
 	TooltipProvider,
-} from "@cloudflare/kumo";
-import { WarningIcon } from "@phosphor-icons/react";
-import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { forwardRef, useState } from "react";
+} from "@cloudflare/kumo"
+import { WarningIcon } from "@phosphor-icons/react"
+import {
+	MutationCache,
+	QueryClient,
+	QueryClientProvider,
+} from "@tanstack/react-query"
+import { forwardRef, useState } from "react"
 import {
 	isRouteErrorResponse,
 	Links,
@@ -21,9 +25,9 @@ import {
 	Link as RouterLink,
 	Scripts,
 	ScrollRestoration,
-} from "react-router";
-import { ApiError } from "~/services/api";
-import "./index.css";
+} from "react-router"
+import { ApiError } from "~/services/api"
+import "./index.css"
 
 function makeQueryClient() {
 	return new QueryClient({
@@ -32,35 +36,32 @@ function makeQueryClient() {
 				staleTime: 30_000,
 				refetchOnWindowFocus: false,
 				retry: (failureCount, error) => {
-					// Don't retry 4xx errors (not found, unauthorized, etc.)
-					if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-						return false;
+					if (
+						error instanceof ApiError &&
+						error.status >= 400 &&
+						error.status < 500
+					) {
+						return false
 					}
-					return failureCount < 2;
+					return failureCount < 2
 				},
 			},
 		},
 		mutationCache: new MutationCache({
 			onError: (error) => {
-				// Global fallback for mutations that don't handle errors themselves.
-				// Consumers using mutateAsync + try/catch handle their own errors.
-				console.error("Mutation failed:", error);
+				console.error("Mutation failed:", error)
 			},
 		}),
-	});
+	})
 }
 
-// Lazy singleton for the browser � avoids module-scope instantiation that
-// leaks cache across SSR requests.
-let browserQueryClient: QueryClient | undefined;
+let browserQueryClient: QueryClient | undefined
 function getQueryClient() {
 	if (typeof window === "undefined") {
-		// SSR: always create a fresh client per request to prevent cross-user cache leaks
-		return makeQueryClient();
+		return makeQueryClient()
 	}
-	// Browser: reuse the same client across navigations
-	if (!browserQueryClient) browserQueryClient = makeQueryClient();
-	return browserQueryClient;
+	if (!browserQueryClient) browserQueryClient = makeQueryClient()
+	return browserQueryClient
 }
 
 const KumoLink = forwardRef<
@@ -70,10 +71,10 @@ const KumoLink = forwardRef<
 	if (href && !href.startsWith("http")) {
 		return (
 			<RouterLink to={href} ref={ref} {...(props as Record<string, unknown>)} />
-		);
+		)
 	}
-	return <a href={href} ref={ref} {...props} />;
-});
+	return <a href={href} ref={ref} {...props} />
+})
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
@@ -88,7 +89,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
 					sizes="48x48 32x32 16x16"
 				/>
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<title>ONYX</title>
+				<meta name="theme-color" content="#0a1020" />
+				<meta name="color-scheme" content="dark light" />
+
+				{/* SEO meta tags */}
+				<meta
+					name="description"
+					content="ONYX — Creator economy email platform. Monetize your content, own your audience, and build your empire — all from your inbox."
+				/>
+				<meta property="og:site_name" content="ONYX" />
+				<meta
+					property="og:title"
+					content="ONYX — Your Inbox, Your Empire"
+				/>
+				<meta
+					property="og:description"
+					content="Creator economy email platform for content monetization, subscriptions, and pay-per-view access."
+				/>
+				<meta property="og:image" content="/favicon.svg" />
+				<meta property="og:type" content="website" />
+				<meta name="twitter:card" content="summary_large_image" />
+
+				{/* Turnstile preconnect */}
+				<link rel="preconnect" href="https://challenges.cloudflare.com" />
+				<link
+					rel="dns-prefetch"
+					href="https://challenges.cloudflare.com"
+				/>
+
+				{/* Content Security Policy */}
+				<meta
+					httpEquiv="Content-Security-Policy"
+					content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"
+				/>
+
+				<title>ONYX — Creator Economy Email Platform</title>
+
 				<script
 					dangerouslySetInnerHTML={{
 						__html:
@@ -106,7 +142,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Scripts />
 			</body>
 		</html>
-	);
+	)
 }
 
 export function HydrateFallback() {
@@ -114,13 +150,11 @@ export function HydrateFallback() {
 		<div className="flex items-center justify-center h-screen">
 			<Loader size="lg" />
 		</div>
-	);
+	)
 }
 
 export default function App() {
-	// Use useState to ensure each SSR request gets a fresh client while the
-	// browser reuses the same singleton across navigations.
-	const [queryClient] = useState(getQueryClient);
+	const [queryClient] = useState(getQueryClient)
 	return (
 		<QueryClientProvider client={queryClient}>
 			<LinkProvider component={KumoLink}>
@@ -131,39 +165,39 @@ export default function App() {
 				</TooltipProvider>
 			</LinkProvider>
 		</QueryClientProvider>
-	);
+	)
 }
 
 export function ErrorBoundary({ error }: { error: unknown }) {
-	let title = "Something went wrong";
-	let description = "An unexpected error occurred. Please try again.";
-	let status: number | null = null;
+	let title = "Something went wrong"
+	let description = "An unexpected error occurred. Please try again."
+	let status: number | null = null
 
 	if (isRouteErrorResponse(error)) {
-		status = error.status;
+		status = error.status
 		if (error.status === 404) {
-			title = "Page not found";
+			title = "Page not found"
 			description =
-				"The page you're looking for doesn't exist or has been moved.";
+				"The page you're looking for doesn't exist or has been moved."
 		} else {
-			title = `Error ${error.status}`;
-			description = error.statusText || description;
+			title = `Error ${error.status}`
+			description = error.statusText || description
 		}
 	} else if (error instanceof Error && import.meta.env.DEV) {
-		description = error.message;
+		description = error.message
 	}
 
 	return (
 		<div className="flex items-center justify-center min-h-screen p-8">
 			<Empty
 				icon={<WarningIcon size={48} className="text-kumo-inactive" />}
-				title={status === 404 ? "404 � Page not found" : title}
+				title={status === 404 ? "404 — Page not found" : title}
 				description={description}
 				contents={
 					<Button
 						variant="primary"
 						onClick={() => {
-							window.location.href = "/";
+							window.location.href = "/"
 						}}
 					>
 						Go Home
@@ -171,5 +205,5 @@ export function ErrorBoundary({ error }: { error: unknown }) {
 				}
 			/>
 		</div>
-	);
+	)
 }

@@ -31,5 +31,6 @@ export default [
 		route("admin/signups", "routes/admin-signup-queue.tsx"),
 		route("search", "routes/search-results.tsx"),
 	]),
+	route(":creatorId", "routes/creator.$creatorId.tsx"),
 	route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;
