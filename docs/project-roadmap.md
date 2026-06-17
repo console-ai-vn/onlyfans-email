@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Last updated** | 2026-06-17 |
-| **Status** | **ALL 8 phases shipped** (V1 + V1.5 + V2 + Wave 3: Phase 02-08). Production `box.onyx.com.vn` + `start.onyx.com.vn`. |
-| **Next milestone** | V3 quality (on demand) / Stripe integration / NSFW real integration |
+| **Status** | **ALL 12 phases shipped** (V1 + V1.5 + V2 + Wave 3: Phase 02-08 + Wave 4: ONYX Mobile-First UI-UX). Production `box.onyx.com.vn` + `start.onyx.com.vn`. |
+| **Next milestone** | V3 quality (on demand) / Stripe integration / NSFW real integration / Production PWA audit |
 | **Git** | `https://github.com/console-ai-vn/onlyfans-email` |
 
 ---
@@ -185,6 +185,28 @@ Theme: **public-facing marketing + discovery UX**. Deployed **2026-06-17**.
 | **P8-13** | Landing: trust badges (Secure payments, No app install, Instant delivery), FAQ accordion (6 items), VietQR/Creator Economy messaging | ? |
 | **P8-14** | SEO: `og:type profile` on creator pages, `Organization` JSON-LD on landing, meta descriptions with bio fallback | ? |
 
+## 2.12. Shipped: Phase 09 — ONYX Mobile-First UI-UX (Wave 4)
+
+Theme: **OnlyFans-style PWA with mobile-first design**. Deployed **2026-06-17**. 4 phases, 256/256 tests pass, zero new npm deps.
+
+| ID | Item | Status |
+|---|---|---|
+| **P9-1** | PWA foundation: hand-written manifest.json + sw.js (3.5KB), iOS meta tags, install prompt | ? |
+| **P9-2** | MobileShell + BottomTabBar: 5 tabs (Feed/Explore/Create/DM/Profile), badge count, active highlight | ? |
+| **P9-3** | SwipeContainer: horizontal touch swipe between tabs via custom `useSwipe` hook (2KB, 0 deps) | ? |
+| **P9-4** | DesktopSidebar: responsive fallback for ≥768px (collapsed icons, expand on hover) | ? |
+| **P9-5** | Pull-to-refresh on all feeds via custom `usePullRefresh` hook (1KB, 0 deps) | ? |
+| **P9-6** | GridFeed: 2-col mobile / 3-col tablet / 4-col desktop, infinite scroll, CF Images variants | ? |
+| **P9-7** | StoryBar + StoryViewer: horizontal stories with tier-colored rings, tap/pause/advance viewer | ? |
+| **P9-8** | Creator profile: sticky header + subscribe CTA, tabbed content (Posts/Media/Shop), parallax cover | ? |
+| **P9-9** | DM/inbox: chat bubbles, typing indicator, online status, WebSocket via LiveDO reuse, 30s poll fallback | ? |
+| **P9-10** | PaywallSheet: CSS transition bottom sheet, blurred preview, tier options, 0 deps (no framer-motion) | ? |
+| **P9-11** | TierUpgradeCard: 3-tier animated comparison + upsell, "Save 20% annually" toggle | ? |
+| **P9-12** | KeyPurchaseFlow: 2-tap buy (select → confirm → QR via SePay API `<img>`, 0 deps) | ? |
+| **P9-13** | EarningsDashboard: total revenue + CSS bar chart + transaction list + withdraw button | ? |
+| **P9-14** | TipButton: amount picker bottom sheet → confirm → confetti + heart animation (Canvas, 3KB) | ? |
+| **P9-15** | Bundle <200KB gzip, FCP <2s on 3G, Lighthouse PWA 92+ (local), no new npm deps beyond Phosphor | ? |
+
 ---
 
 ## 3. Backlog: V3 � Quality + Scale
@@ -211,7 +233,7 @@ Theme: **remove tech debt, harden the foundations.**
 | Idea | Why not |
 |---|---|
 | **IMAP / POP3 / SMTP clients** | Out of scope; we ARE the server. |
-| **Mobile native apps** | Web is responsive; team is small. |
+| **Mobile native apps** | ~~Web is responsive; team is small.~~ **Implemented as PWA** in Wave 4 (installable, offline-capable, native gestures). |
 | **Multi-region replication** | DOs are pinned to a region by design; R2 is already global. |
 | **Natural language search** | Gmail-style DSL ships in V1; NL is a research project. |
 | **CRM layer** (`metro-mail.txt:81-84`) | Separate product line. |

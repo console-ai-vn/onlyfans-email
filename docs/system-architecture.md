@@ -6,7 +6,7 @@
 | **Worker** | `onyx-email` (`workers/app.ts`) |
 | **Custom domains** | `box.onyx.com.vn` (auth), `start.onyx.com.vn` (public) |
 | **Trust boundary** | Cloudflare Access JWT + JWT refresh/access tokens |
-| **New in Wave 3** | InventoryDO, LiveDO (WebSocket Hibernation), Content Gate (PPV + signed URLs), Landing UX (creator profiles, pricing, onboarding), JWT refresh, rate limiter, security headers, Turnstile stub |
+| **New in Wave 4** | ONYX Mobile-First UI-UX (PWA shell, bottom tab nav, grid feed, swipe stories, DM chat, paywall bottom sheets, tip/confetti, earnings dashboard) |
 
 ---
 
@@ -78,6 +78,85 @@ Outbound mail: MailboxDO ? getRecipientRouting
                 ? external recipients: 403 "internal-only"
                 (Email Service binding used only if ALLOW_FORWARDING + external)
 ```
+
+---
+
+## 1.5 Mobile-First UI Layer (Wave 4)
+
+**ONYX Mobile-First UI-UX** — OnlyFans-pattern PWA with mobile-first design, desktop responsive fallback.
+
+```
+app/
+├── MobileShell.tsx             PWA container + install prompt + viewport detection
+├── BottomTabBar.tsx            5-tab bar: Feed/Explore/Create/DM/Profile + badges
+├── SwipeContainer.tsx          Horizontal swipe between tabs (custom useSwipe hook)
+├── DesktopSidebar.tsx          Desktop fallback: collapsible sidebar nav
+├── InstallBanner.tsx           "Add to Home Screen" prompt (after 3 visits)
+│
+├── Feed & Discovery
+│   ├── GridFeed.tsx            2-col mobile / 3-col tablet / 4-col desktop grid
+│   ├── FeedCard.tsx            Creator thumbnail + preview + lock badge
+│   ├── StoryBar.tsx            Horizontal scrollable story avatars
+│   ├── StoryViewer.tsx         Full-screen story viewer (tap/pause/advance)
+│   ├── CreatorHeader.tsx       Sticky profile header + subscribe CTA
+│   ├── ContentGrid.tsx         Tabbed content (Posts/Media/Shop)
+│   └── ContentCard.tsx         Gate-aware content with overlay
+│
+├── DM + Chat
+│   ├── DMList.tsx              Conversation list with previews + unread + online
+│   ├── DMChat.tsx              Chat bubble UI + input bar (reuses LiveDO WebSocket)
+│   ├── ChatBubble.tsx          Sent/received styling + status checks
+│   ├── TypingIndicator.tsx     Animated 3-dot typing indicator
+│   ├── OnlineBadge.tsx         Green dot for online presence
+│   ├── DMComposer.tsx          Message input + attachment + send
+│   └── MediaPreview.tsx        Full-screen image viewer (pinch-to-zoom)
+│
+├── Monetization
+│   ├── PaywallSheet.tsx        Bottom sheet subscribe/unlock (CSS transition)
+│   ├── TierUpgradeCard.tsx     Animated 3-tier comparison + upsell
+│   ├── KeyPurchaseFlow.tsx     2-tap buy: select → confirm → QR (SePay API)
+│   ├── EarningsDashboard.tsx   Creator revenue: total + CSS bar chart + transactions
+│   ├── TipButton.tsx           Floating tip with amount picker
+│   ├── ThankYouAnimation.tsx   Canvas confetti + heart on purchase (3KB)
+│   ├── SubscriberBadge.tsx     "SUBSCRIBER" pill with shine animation
+│   └── CountdownTimer.tsx      FOMO countdown for limited offers
+│
+├── Hooks
+│   ├── useSwipe.ts             Horizontal swipe gesture (~2KB)
+│   ├── usePullRefresh.ts       Pull-to-refresh gesture (~1KB)
+│   ├── useGridLayout.ts        Responsive column calculator
+│   ├── useDoubleTap.ts         Double-tap detection (<300ms)
+│   ├── useLongPress.ts         Long-press detection (500ms)
+│   ├── useDM.ts                WebSocket hook (reuses LiveDO)
+│   ├── useTyping.ts            Typing indicator via WS heartbeat
+│   ├── usePaywall.ts           Gate check + unlock flow
+│   └── useEarnings.ts          Revenue data + stats
+│
+├── lib/
+│   ├── pwa-utils.ts            Install prompt + SW registration (~1KB)
+│   └── gesture-utils.ts        Shared gesture helpers
+│
+└── public/
+    ├── manifest.json           PWA manifest (hand-written, ~20 lines)
+    ├── sw.js                   Service worker (hand-written, ~50 lines, 3.5KB)
+    └── icons/                  icon-192.png, icon-512.png, apple-icon-180.png
+```
+
+**UI Stack:** React Router v7, @cloudflare/kumo components, Tailwind v4, Phosphor icons. **Zero additional npm deps** — all gestures are custom hooks (`touchstart`/`touchmove`/`touchend`), animations via CSS `transition` + Tailwind `animate-*`, confetti via Canvas API, QR via server-side SePay API `<img>`.
+
+**CF-Native Optimizations:**
+| Pattern | Implementation | Size |
+|---------|----------------|------|
+| PWA | Hand-written manifest.json + sw.js | 3.5KB |
+| Gestures | Custom useSwipe + usePullRefresh | ~3KB |
+| Animations | CSS transition + @starting-style | 0KB |
+| QR Code | Server-side SePay API → `<img>` | 0KB |
+| Confetti | Canvas API particles | ~3KB |
+| Icons | @phosphor-icons/react | existing |
+| Images | CF Images CDN (`imagedelivery.net` variants) | 0KB client |
+| Real-time | Reuses LiveDO WebSocket (no new DO) | 0KB |
+
+**Responsive Breakpoints:** <768px → mobile shell (BottomTabBar + swipe), ≥768px → DesktopSidebar + main content.
 
 ---
 

@@ -39,6 +39,7 @@ at `/mcp` for external AI clients.
 - **Content gate** ? 3 content tiers (public, subscribers, PPV), `GateOverlay` with blurred preview + unlock flow, signed R2/Stream URLs tiered by expiry (public 1h, subscribers 24h, PPV 1h), `ContentTierBadge` visual indicators, gate check/status/unlock API via `POST /api/v1/gate/unlock` + `GET /api/v1/gate/check`, per-content unlock records in R2, PPV key consumption via InventoryDO.
 - **Landing UX** ? redesigned `start.onyx.com.vn` landing page (hero, features, pricing, creator showcase, FAQ, signup form), public creator profiles at `/:creatorId` with SSR (SEO meta tags, JSON-LD structured data), shop tab with `ItemCard` grid, `PricingTable` + `TierCard` components, `CreatorCard` with avatar/cover/bio, `ContentGrid` with gate-aware thumbnails (blur + `GateOverlay` for locked content), `SkeletonLoader` family (`SkeletonCard`, `SkeletonGrid`, `SkeletonHero`, `SkeletonPage`, `SkeletonText`, `SkeletonAvatar`), `OnboardingWizard` 3-step flow (profile / pricing / first-post).
 - **Vietnamese UI** ? chat-style UX, not a Gmail clone.
+- **Mobile-first PWA** ? OnlyFans-style bottom tab bar (Feed/Explore/Create/DM/Profile), 2-col grid feed, swipe stories, DM chat bubbles + typing indicator via WebSocket, bottom sheet paywalls, pull-to-refresh, confetti animations. Installable PWA with hand-written manifest + service worker (<4KB total). Zero npm deps beyond @phosphor-icons/react.
 
 ## Stack
 
