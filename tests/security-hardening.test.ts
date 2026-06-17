@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { sanitizeRichHtml } from "../workers/lib/html-sanitize.ts";
 
-const TOOL_ACCESS_EMAIL_HEADER = "x-vsbg-access-email";
+const TOOL_ACCESS_EMAIL_HEADER = "x-onyx-access-email";
 
 function parseAgentMailboxId(pathname: string): string | null {
 	const match = pathname.match(/^\/agents\/[^/]+\/([^/]+)/);
@@ -53,19 +53,19 @@ test("toPublicMailboxSettings keeps only org-visible profile fields", () => {
 
 test("parseAgentMailboxId extracts mailbox id from agent route", () => {
 	assert.equal(
-		parseAgentMailboxId("/agents/email-agent/owner%40vsbg.vn"),
-		"owner@vsbg.vn",
+		parseAgentMailboxId("/agents/email-agent/owner%40onyx.com.vn"),
+		"owner@onyx.com.vn",
 	);
 	assert.equal(parseAgentMailboxId("/api/v1/mailboxes/x"), null);
 });
 
 test("withToolAccessEmail forwards access identity header", () => {
 	const request = withToolAccessEmail(
-		new Request("https://box.vsbg.vn/mcp"),
-		"admin@vsbg.vn",
+		new Request("https://box.onyx.com.vn/mcp"),
+		"admin@onyx.com.vn",
 	);
 	assert.equal(
 		request.headers.get(TOOL_ACCESS_EMAIL_HEADER),
-		"admin@vsbg.vn",
+		"admin@onyx.com.vn",
 	);
 });
